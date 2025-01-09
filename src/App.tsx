@@ -4,10 +4,12 @@ import ChatInterface from './components/ChatInterface';
 import Features from './components/Features';
 
 function App() {
+  const [isAsking, setIsAsking] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-sm z-50 border-b border-gray-100">
+      <nav className={`fixed top-0 w-full bg-white/80 backdrop-blur-sm z-50 border-b border-gray-100 transition-opacity duration-500 ${isAsking ? 'opacity-30' : 'opacity-100'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -29,7 +31,7 @@ function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-8 items-center min-h-[calc(100vh-4rem)]">
               {/* Left side - Hero content */}
-              <div className="text-left lg:pr-8">
+              <div className={`text-left lg:pr-8 transition-all duration-500 ease-in-out ${isAsking ? 'opacity-0 lg:translate-x-[-100%]' : 'opacity-100 lg:translate-x-0'}`}>
                 <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
                   Your AI-Powered
                   <span className="text-purple-600"> SEO Guru</span>
@@ -48,45 +50,51 @@ function App() {
               </div>
               
               {/* Right side - Chat interface */}
-              <div className="bg-white rounded-xl shadow-xl h-[600px] flex flex-col">
-                <ChatInterface onClose={() => {}} />
+              <div className={`bg-white rounded-xl shadow-xl h-[600px] flex flex-col transition-all duration-500 ease-in-out ${
+                isAsking 
+                  ? 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[80vh] max-w-4xl z-50' 
+                  : ''
+              }`}>
+                <ChatInterface onClose={() => setIsAsking(false)} onAskStart={() => setIsAsking(true)} />
               </div>
             </div>
           </div>
         </div>
 
-        <Features />
-        
-        {/* Testimonials */}
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-12">Trusted by SEO Professionals</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white p-6 rounded-xl shadow-sm">
-                  <p className="text-gray-600 mb-4">
-                    "The AI Guru has transformed how we approach SEO in Las Vegas. It's like having an expert consultant available 24/7."
-                  </p>
-                  <div className="flex items-center">
-                    <img
-                      src={`https://images.unsplash.com/photo-${i === 1 ? '1472099645785-5658abf4ff4e' : i === 2 ? '1494790108377-be9c29b29330' : '1438761681033-6461ffad8d80'}?auto=format&fit=crop&w=50&h=50&q=80`}
-                      alt="Testimonial avatar"
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div className="ml-3">
-                      <p className="font-semibold">John Doe</p>
-                      <p className="text-sm text-gray-500">SEO Director</p>
+        <div className={`transition-opacity duration-500 ${isAsking ? 'opacity-0' : 'opacity-100'}`}>
+          <Features />
+          
+          {/* Testimonials */}
+          <section className="py-20 bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <h2 className="text-3xl font-bold text-center mb-12">Trusted by SEO Professionals</h2>
+              <div className="grid md:grid-cols-3 gap-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white p-6 rounded-xl shadow-sm">
+                    <p className="text-gray-600 mb-4">
+                      "The AI Guru has transformed how we approach SEO in Las Vegas. It's like having an expert consultant available 24/7."
+                    </p>
+                    <div className="flex items-center">
+                      <img
+                        src={`https://images.unsplash.com/photo-${i === 1 ? '1472099645785-5658abf4ff4e' : i === 2 ? '1494790108377-be9c29b29330' : '1438761681033-6461ffad8d80'}?auto=format&fit=crop&w=50&h=50&q=80`}
+                        alt="Testimonial avatar"
+                        className="w-10 h-10 rounded-full"
+                      />
+                      <div className="ml-3">
+                        <p className="font-semibold">John Doe</p>
+                        <p className="text-sm text-gray-500">SEO Director</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className={`bg-gray-900 text-white py-12 transition-opacity duration-500 ${isAsking ? 'opacity-0' : 'opacity-100'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>

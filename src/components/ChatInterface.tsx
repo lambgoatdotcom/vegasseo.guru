@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message } from '../types';
 import { sendMessage } from '../services/api';
 import TypingIndicator from './TypingIndicator';
 
 interface ChatInterfaceProps {
   onClose: () => void;
+  onAskStart: () => void;
 }
 
-function ChatInterface({ onClose }: ChatInterfaceProps) {
+function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -22,6 +26,7 @@ function ChatInterface({ onClose }: ChatInterfaceProps) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    onAskStart();
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -50,6 +55,12 @@ function ChatInterface({ onClose }: ChatInterfaceProps) {
     <>
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-xl font-semibold">Try the AI Guru</h2>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -65,7 +76,53 @@ function ChatInterface({ onClose }: ChatInterfaceProps) {
                   : 'bg-gray-100 text-gray-900'
               }`}
             >
-              {message.content}
+              <ReactMarkdown
+                components={{
+                  code({node, inline, className, children, ...props}) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        {...props}
+                        style={atomDark}
+                        language={match[1]}
+                        PreTag="div"
+                        className="rounded-md text-sm"
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code {...props} className={`${className} bg-gray-700/10 rounded px-1 py-0.5`}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  p: ({children}) => <p className="mb-4 last:mb-0">{children}</p>,
+                  ul: ({children}) => <ul className="list-disc ml-6 mb-4 last:mb-0">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal ml-6 mb-4 last:mb-0">{children}</ol>,
+                  li: ({children}) => <li className="mb-1 last:mb-0">{children}</li>,
+                  a: ({children, href}) => (
+                    <a 
+                      href={href} 
+                      className={`underline ${message.role === 'user' ? 'text-white' : 'text-purple-600'}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      {children}
+                    </a>
+                  ),
+                  h1: ({children}) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+                  h2: ({children}) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4">
+                      {children}
+                    </blockquote>
+                  ),
+                }}
+                className={`prose ${message.role === 'user' ? 'prose-invert' : ''} max-w-none`}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
