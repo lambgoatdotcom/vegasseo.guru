@@ -37,7 +37,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelType>('deepseek');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const [isSearching, setIsSearching] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -507,9 +507,9 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
             onChange={(e) => setSelectedModel(e.target.value as ModelType)}
             className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-purple-500"
           >
+            <option value="gemini">Gemini</option>
             <option value="deepseek">DeepSeek</option>
             <option value="openai">OpenAI</option>
-            <option value="gemini">Gemini</option>
           </select>
         </div>
         <button
@@ -623,7 +623,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
         {isLoading && !streamingMessage && (
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
-              <TypingIndicator />
+              <TypingIndicator action={isSearching ? 'searching' : 'thinking'} />
             </div>
           </div>
         )}

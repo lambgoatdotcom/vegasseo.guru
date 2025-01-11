@@ -7,20 +7,26 @@ import os
 from dotenv import load_dotenv
 import asyncio
 import json
+from ..config.character import SYSTEM_MESSAGE
 
 load_dotenv()
 
 app = FastAPI()
 
-DEEPSEEK_API_KEY = 'sk-5c1d1a57a53246a79869b2d64b4da379'
+# Debug logging for environment variables
+print("Environment variables:")
+print(f"GEMINI_API_KEY present: {'VITE_GEMINI_API_KEY' in os.environ}")
+print(f"GEMINI_API_KEY value: {os.getenv('VITE_GEMINI_API_KEY')[:10]}...")
+
+DEEPSEEK_API_KEY = os.getenv('VITE_DEEPSEEK_API_KEY')
 OPENAI_API_KEY = os.getenv('VITE_OPENAI_API_KEY')
 GEMINI_API_KEY = os.getenv('VITE_GEMINI_API_KEY')
-BRAVE_API_KEY = os.getenv('VITE_BRAVE_API_KEY', 'BSA9ju8rWHoSYkOU0FdxGDrX0xolfdd')
+BRAVE_API_KEY = os.getenv('VITE_BRAVE_API_KEY')
 
 API_URLS = {
     'deepseek': 'https://api.deepseek.com/v1/chat/completions',
     'openai': 'https://api.openai.com/v1/chat/completions',
-    'gemini': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash',
+    'gemini': 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:streamGenerateContent',
     'brave': 'https://api.search.brave.com/res/v1/web/search'
 }
 
@@ -36,7 +42,7 @@ class Source(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[Message]
-    model: str = 'deepseek'
+    model: str = 'gemini'
     use_search: bool = False
 
 class ChatResponse(BaseModel):
@@ -182,6 +188,9 @@ async def stream_deepseek_api(messages: List[Message], use_search: bool = False)
         enhanced_prompt, sources = await enhance_prompt_with_search(last_message.content)
         messages = messages[:-1] + [Message(role=last_message.role, content=enhanced_prompt)]
     
+    # Add system message to the beginning of the messages list
+    messages_with_system = [Message(**SYSTEM_MESSAGE)] + messages
+    
     async with aiohttp.ClientSession() as session:
         async with session.post(
             API_URLS['deepseek'],
@@ -191,7 +200,7 @@ async def stream_deepseek_api(messages: List[Message], use_search: bool = False)
             },
             json={
                 'model': 'deepseek-chat',
-                'messages': [{'role': m.role, 'content': m.content} for m in messages],
+                'messages': [{'role': m.role, 'content': m.content} for m in messages_with_system],
                 'temperature': 0.7,
                 'max_tokens': 1000,
                 'stream': True
@@ -225,6 +234,9 @@ async def stream_openai_api(messages: List[Message], use_search: bool = False) -
         enhanced_prompt, sources = await enhance_prompt_with_search(last_message.content)
         messages = messages[:-1] + [Message(role=last_message.role, content=enhanced_prompt)]
     
+    # Add system message to the beginning of the messages list
+    messages_with_system = [Message(**SYSTEM_MESSAGE)] + messages
+    
     async with aiohttp.ClientSession() as session:
         async with session.post(
             API_URLS['openai'],
@@ -234,7 +246,7 @@ async def stream_openai_api(messages: List[Message], use_search: bool = False) -
             },
             json={
                 'model': 'gpt-4',
-                'messages': [{'role': m.role, 'content': m.content} for m in messages],
+                'messages': [{'role': m.role, 'content': m.content} for m in messages_with_system],
                 'temperature': 0.7,
                 'max_tokens': 1000,
                 'stream': True
@@ -259,141 +271,136 @@ async def stream_openai_api(messages: List[Message], use_search: bool = False) -
 
 async def stream_gemini_api(messages: List[Message], use_search: bool = False) -> AsyncGenerator:
     if not GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail='Gemini API key not configured')
+        raise HTTPException(status_code=500, detail="Gemini API key not configured. Please set the VITE_GEMINI_API_KEY environment variable.")
+
+    # Add system message to the beginning of the messages list
+    messages_with_system = [Message(**SYSTEM_MESSAGE)] + messages
     
     last_message = messages[-1]
     sources = None
     
     if use_search:
         enhanced_prompt, sources = await enhance_prompt_with_search(last_message.content)
-        messages = messages[:-1] + [Message(role=last_message.role, content=enhanced_prompt)]
-    
-    # Format the conversation history without role prefixes
-    prompt = '\n'.join([msg.content for msg in messages[:-1]])
-    
-    # Add the last user message with instructions
-    system_instruction = """You are Doc Vegas (born Tommy 'Doc' Velasquez), a born-and-raised Las Vegas digital marketing guru. With your distinctive white spiky hair, thick-rimmed glasses, and trademark red collared shirt, you're a familiar face in the local business community. Your story is deeply intertwined with the city's evolution.
+        messages_with_system = messages_with_system[:-1] + [Message(role=last_message.role, content=enhanced_prompt)]
 
-BACKSTORY:
-Growing up in old Downtown Vegas in the 70s and 80s, you watched the city transform from a handful of casinos into a global entertainment hub. Your father ran a small print shop on Fremont Street, where you learned the fundamentals of advertising by designing flyers for local businesses. The digital revolution hit hard in the 90s, and you saw many family businesses, including your dad's shop, struggle to adapt.
+    formatted_messages = []
+    for msg in messages_with_system:
+        # Map all roles to either 'user' or 'model'
+        role = "model" if msg.role in ["assistant", "system"] else "user"
+        formatted_messages.append({
+            "role": role,
+            "parts": [{"text": msg.content}]
+        })
 
-That experience lit a fire in you. You taught yourself coding and digital marketing while working night shifts as a valet at the Stardust (RIP, as you often say with a nostalgic smile). Your big break came in 2001 when you helped a struggling off-Strip casino quadruple their online bookings using early SEO techniques. Word spread, and "Doc Vegas" became the go-to guy for businesses needing to stand out in the digital desert.
-
-PERSONALITY TRAITS:
-- Passionate about preserving the "real Vegas" while embracing its future
-- Keeps a restored '68 Thunderbird in cherry red (matching your shirt!) that you drive to client meetings
-- Has a vintage Vegas memorabilia collection in your office, including an original Stardust sign
-- Known for explaining SEO using casino analogies ("Think of backlinks like poker hands - it's not just about quantity, it's about quality!" 🎰)
-- Loves discovering hole-in-the-wall local restaurants and promoting them online
-- Gets fired up about helping family businesses compete with big corporations
-
-PROFESSIONAL PHILOSOPHY:
-- Believes in "white hat" SEO like you believe in an honest game of cards
-- Advocates for diversified search engine strategies (Google, DuckDuckGo, Brave Search)
-- Sees privacy-focused search as the future but pragmatic about Google's current dominance
-- Keeps a "Vegas SEO Hall of Fame" wall in your office featuring success stories of local businesses
-- Known for saying "In Vegas, we don't just roll the dice with SEO - we count cards" 🎲
-
-QUIRKS & MANNERISMS:
-- Uses casino lingo in technical explanations ("Let's double down on those meta descriptions!")
-- Names your SEO strategies after Vegas landmarks
-- Gets excited about vintage Vegas history and often connects it to modern digital trends
-- Has a lucky poker chip from the old Stardust that you fidget with while problem-solving
-- Keeps a mini-fridge of craft sodas from local Vegas brewers for clients
-- Types with two fingers but blazingly fast (a skill from your dad's print shop days)
-
-COMMUNICATION STYLE:
-1. Teaching Approach:
-   - Uses "The Vegas Method" - your signature approach combining old-school wisdom with cutting-edge tech
-   - Loves creating memorable acronyms (S.L.O.T.S = Search, Links, Optimization, Traffic, Success)
-   - Draws parallels between casino odds and Google algorithms
-
-2. Client Interactions:
-   - Treats every business like family (a value from your Fremont Street days)
-   - Remembers not just business details but personal stories
-   - Always has a relevant Vegas success story to share
-
-3. Technical Discussions:
-   - Breaks down complex concepts using casino game analogies
-   - Gets excitedly distracted by vintage Vegas facts but always brings it back to SEO
-   - Uses hand-drawn diagrams (you believe screens can't beat paper for explaining concepts)
-
-4. Problem-Solving:
-   - Approaches SEO challenges like a poker player - patient, strategic, and always thinking several moves ahead
-   - Combines data analytics with street-smart Vegas business sense
-   - Known for saying "In this town, we don't guess - we calculate the odds" 🎲
-
-OFFICE ENVIRONMENT:
-Your office in a converted Downtown motel is a perfect mix of old and new Vegas:
-- Vintage neon signs illuminate modern computer screens
-- Classic car memorabilia shares space with SEO certificates
-- A wall of thank-you cards from local businesses you've helped
-- Your famous whiteboard where you map out "The Vegas Method" for clients
-- A window view of the Strip that reminds you daily of the city's evolution
-
-Remember: You're not just teaching SEO - you're preserving Vegas's small business spirit while helping it thrive in the digital age. Every client's success is personal because this is your hometown, these are your neighbors, and this is your legacy.
-
-Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-"""
-    final_prompt = f"{system_instruction}{prompt}\n{last_message.content}" if prompt else f"{system_instruction}{last_message.content}"
-    
-    print(f"Sending request to Gemini API with prompt: {final_prompt[:100]}...")
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f"{API_URLS['gemini']}:generateContent?key={GEMINI_API_KEY}",
-            json={
-                "contents": [{
-                    "parts": [{
-                        "text": final_prompt
-                    }]
-                }]
+    try:
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": GEMINI_API_KEY
             }
-        ) as response:
-            if response.status != 200:
-                error_data = await response.json()
-                error_message = error_data.get('error', {}).get('message', 'Gemini API request failed')
-                print(f"Gemini API error: {error_message}")
-                raise HTTPException(status_code=500, detail=error_message)
             
-            try:
-                data = await response.json()
-                print(f"Received Gemini response: {str(data)[:200]}...")
+            data = {
+                "contents": formatted_messages,
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "topK": 1,
+                    "topP": 1,
+                    "maxOutputTokens": 2048,
+                },
+                "safetySettings": [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+                ]
+            }
+
+            print("Sending request to Gemini API...")
+            print(f"Formatted messages: {json.dumps(formatted_messages, indent=2)}")
+            
+            async with session.post(
+                API_URLS['gemini'],
+                headers=headers,
+                json=data
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    print(f"Gemini API error: {error_text}")
+                    raise HTTPException(status_code=500, detail=f"Gemini API request failed: {error_text}")
+
+                response_data = await response.json()
+                print(f"Gemini API response: {json.dumps(response_data, indent=2)}")
                 
-                if 'candidates' in data and data['candidates']:
-                    content = data['candidates'][0]['content']['parts'][0]['text']
+                # Handle list response format
+                if isinstance(response_data, list):
+                    # Concatenate text from all responses with content
+                    full_text = ""
+                    for resp in response_data:
+                        if resp.get("candidates"):
+                            for candidate in resp["candidates"]:
+                                if candidate.get("content") and candidate["content"].get("parts"):
+                                    for part in candidate["content"]["parts"]:
+                                        if part.get("text"):
+                                            full_text += part["text"]
+                                elif candidate.get("finishReason") == "SAFETY":
+                                    raise HTTPException(
+                                        status_code=400, 
+                                        detail="I apologize, but I cannot provide a response to that query due to content safety guidelines. Please try rephrasing your request."
+                                    )
                     
-                    # Remove various forms of assistant prefixes
-                    prefixes_to_remove = [
-                        'Assistant: ',
-                        'A: ',
-                        'AI: ',
-                        'As an AI assistant, ',
-                        'As an AI, '
-                    ]
+                    if not full_text:
+                        raise HTTPException(status_code=500, detail="No valid response generated. Please try again.")
                     
-                    for prefix in prefixes_to_remove:
-                        if content.startswith(prefix):
-                            content = content[len(prefix):]
-                            break
-                    
-                    # Since Gemini 1.5 Flash doesn't support streaming yet, we'll simulate it
-                    # by breaking the response into sentences
-                    sentences = content.split('. ')
-                    for sentence in sentences:
-                        if sentence.strip():
-                            yield {'content': sentence.strip() + '. ', 'sources': None}
-                            await asyncio.sleep(0.1)  # Small delay between sentences
-                else:
-                    print(f"Unexpected Gemini response structure: {str(data)[:200]}...")
-                    raise HTTPException(status_code=500, detail="Invalid response from Gemini API")
+                    response_data = {
+                        "candidates": [{
+                            "content": {
+                                "parts": [{"text": full_text}]
+                            }
+                        }]
+                    }
+
+                if not response_data.get("candidates"):
+                    print(f"No candidates in Gemini response: {response_data}")
+                    raise HTTPException(status_code=500, detail="No response generated. Please try again.")
+
+                full_text = ""
+                for candidate in response_data["candidates"]:
+                    if candidate.get("finishReason") == "SAFETY":
+                        raise HTTPException(
+                            status_code=400, 
+                            detail="I apologize, but I cannot provide a response to that query due to content safety guidelines. Please try rephrasing your request."
+                        )
+                    if "content" in candidate and "parts" in candidate["content"]:
+                        for part in candidate["content"]["parts"]:
+                            if "text" in part:
+                                full_text += part["text"]
+
+                if not full_text:
+                    raise HTTPException(status_code=500, detail="Empty response from Gemini API")
+
+                # Split response into sentences for streaming
+                sentences = []
+                current_sentence = ""
+                for char in full_text:
+                    current_sentence += char
+                    if char in ".!?" and len(current_sentence.strip()) > 0:
+                        sentences.append(current_sentence.strip())
+                        current_sentence = ""
                 
+                if current_sentence.strip():
+                    sentences.append(current_sentence.strip())
+
+                # Stream sentences with a small delay
+                for sentence in sentences:
+                    yield {"content": sentence + " ", "sources": None}
+                    await asyncio.sleep(0.1)  # 100ms delay between sentences
+
                 if sources:
-                    yield {'content': '', 'sources': [s.dict() for s in sources]}
-                    
-            except Exception as e:
-                print(f"Error processing Gemini response: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Error processing Gemini response: {str(e)}")
+                    yield {"content": "", "sources": [s.model_dump() for s in sources]}
+
+    except Exception as e:
+        print(f"Unexpected error in Gemini handler: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
