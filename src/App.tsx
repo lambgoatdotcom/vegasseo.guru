@@ -13,8 +13,10 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Brain className="h-8 w-8 text-purple-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">VegasSEO.guru</span>
+              <a href="/" className="flex items-center hover:opacity-80 transition-opacity">
+                <Brain className="h-8 w-8 text-purple-600" />
+                <span className="ml-2 text-xl font-bold text-gray-900">VegasSEO.guru</span>
+              </a>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
