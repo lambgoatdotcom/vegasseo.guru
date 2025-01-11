@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message } from '../types';
-import { sendMessage } from '../services/api';
+import { sendMessage, ModelType } from '../services/api';
 import TypingIndicator from './TypingIndicator';
 
 interface ChatInterfaceProps {
@@ -21,6 +21,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelType>('deepseek');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +34,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
     setIsLoading(true);
 
     try {
-      const response = await sendMessage([...messages, userMessage]);
+      const response = await sendMessage([...messages, userMessage], selectedModel);
       const aiMessage: Message = {
         role: 'assistant',
         content: response
@@ -54,7 +55,18 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   return (
     <>
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-xl font-semibold">Try the AI Guru</h2>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-xl font-semibold">Try the AI Guru</h2>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value as ModelType)}
+            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-purple-500"
+          >
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
         <button
           onClick={onClose}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
