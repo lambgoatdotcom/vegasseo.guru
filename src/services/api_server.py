@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 import asyncio
 import json
 from ..config.character import SYSTEM_MESSAGE
+from .agents.content_analyzer import ContentAnalysisAgent, ContentAnalysisConfig
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -59,10 +61,14 @@ async def scrape_page_content(url: str) -> str:
                 html = await response.text()
                 
                 # Basic HTML cleaning - remove scripts, styles, etc.
-                html = html.split('<script')[0]  # Remove all script tags and content after
-                html = '\n'.join(line for line in html.split('\n') if not any(tag in line.lower() for tag in ['<style', '<script', '<meta', '<link']))
+                html = html.split('<script')[0]  # Remove script tags and everything after
+                html = '\n'.join(
+                    line
+                    for line in html.split('\n')
+                    if not any(tag in line.lower() for tag in ['<style', '<script', '<meta', '<link'])
+                )
                 
-                # Remove HTML tags
+                # Remove remaining HTML tags
                 text = ''
                 in_tag = False
                 for char in html:
@@ -108,8 +114,7 @@ async def search_brave(query: str, retries: int = 2) -> List[Source]:
                         sources = []
                         results = data.get('web', {}).get('results', [])
                         
-                        # Process each result and ensure we have valid data
-                        for result in results[:5]:  # Limit to top 5 results
+                        for result in results[:5]:
                             if result.get('url') and result.get('title'):
                                 # Scrape content from the page
                                 content = await scrape_page_content(result.get('url'))
@@ -273,9 +278,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key not configured. Please set the VITE_GEMINI_API_KEY environment variable.")
 
-    # Add system message to the beginning of the messages list
     messages_with_system = [Message(**SYSTEM_MESSAGE)] + messages
-    
     last_message = messages[-1]
     sources = None
     
@@ -285,7 +288,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
 
     formatted_messages = []
     for msg in messages_with_system:
-        # Map all roles to either 'user' or 'model'
+        # Map roles to either 'user' or 'model'
         role = "model" if msg.role in ["assistant", "system"] else "user"
         formatted_messages.append({
             "role": role,
@@ -306,6 +309,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
                     "topK": 1,
                     "topP": 1,
                     "maxOutputTokens": 2048,
+                    "model": "gemini-2.0-flash-exp"
                 },
                 "safetySettings": [
                     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
@@ -333,7 +337,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
                 
                 # Handle list response format
                 if isinstance(response_data, list):
-                    # Concatenate text from all responses with content
+                    # Concatenate text from all responses
                     full_text = ""
                     for resp in response_data:
                         if resp.get("candidates"):
@@ -344,7 +348,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
                                             full_text += part["text"]
                                 elif candidate.get("finishReason") == "SAFETY":
                                     raise HTTPException(
-                                        status_code=400, 
+                                        status_code=400,
                                         detail="I apologize, but I cannot provide a response to that query due to content safety guidelines. Please try rephrasing your request."
                                     )
                     
@@ -378,22 +382,22 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
                 if not full_text:
                     raise HTTPException(status_code=500, detail="Empty response from Gemini API")
 
-                # Split response into sentences for streaming
+                # Split response into smaller pieces for streaming
                 sentences = []
                 current_sentence = ""
                 for char in full_text:
                     current_sentence += char
-                    if char in ".!?" and len(current_sentence.strip()) > 0:
+                    # Check for end of sentence or numbered list item
+                    if char in ".!?" or (current_sentence.strip().endswith('.') and current_sentence.strip()[:-1].isdigit()):
                         sentences.append(current_sentence.strip())
                         current_sentence = ""
                 
                 if current_sentence.strip():
                     sentences.append(current_sentence.strip())
 
-                # Stream sentences with a small delay
                 for sentence in sentences:
                     yield {"content": sentence + " ", "sources": None}
-                    await asyncio.sleep(0.1)  # 100ms delay between sentences
+                    await asyncio.sleep(0.1)  # 100ms delay
 
                 if sources:
                     yield {"content": "", "sources": [s.model_dump() for s in sources]}
@@ -418,6 +422,104 @@ async def chat_endpoint(request: ChatRequest):
         return await stream_response(handler(request.messages, request.use_search))
     
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/seo/audit")
+async def seo_audit(request: Request):
+    try:
+        data = await request.json()
+        url = data.get('url')
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+            
+        # Clean the URL before using it in the report
+        clean_url = url.replace(" ", "")
+
+        # Fetch the page content
+        async with aiohttp.ClientSession() as session:
+            async with session.get(clean_url) as response:
+                if response.status != 200:
+                    error_report = f"""Website Audit: {clean_url}
+
+Overview
+The URL {clean_url} does not appear to be accessible. The server returned a {response.status} error.
+
+Additional Notes
+- The page returned a {response.status} error code
+- Please verify the URL is correct and the page is accessible
+- Check if the URL requires authentication or has restricted access"""
+
+                    return JSONResponse({
+                        "status": "error",
+                        "report": error_report
+                    })
+
+                html_content = await response.text()
+
+        # Parse HTML and extract text content
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+            
+        # Get text content
+        text_content = soup.get_text()
+        
+        # Clean up text (remove extra whitespace)
+        text_content = " ".join(text_content.split())
+
+        # Initialize the content analysis agent with page-specific focus
+        agent = ContentAnalysisAgent(
+            config=ContentAnalysisConfig(
+                important_keywords=[
+                    "Las Vegas",
+                    "Vegas",
+                    "Nevada",
+                    "NV",
+                    "casino",
+                    "resort",
+                    "hotel",
+                    "entertainment",
+                    "tourism"
+                ],
+                min_word_count=300,
+                max_keyword_density=2.5,
+                target_readability_score=60.0
+            )
+        )
+
+        # Analyze the content
+        metrics = await agent.analyze_content(text_content, html_content)
+        report = f"""Page Audit: {clean_url}
+
+{agent.generate_report(metrics)}"""
+
+        return JSONResponse({
+            "status": "success",
+            "report": report
+        })
+
+    except aiohttp.ClientError as e:
+        error_report = f"""Page Audit: {url}
+
+Overview
+Unable to access {url}. The page appears to be unavailable.
+
+Additional Notes
+- The connection to the page failed
+- Please verify:
+  - The URL is correct
+  - The page is accessible
+  - Your internet connection is stable"""
+
+        return JSONResponse({
+            "status": "error",
+            "report": error_report
+        })
+
+    except Exception as e:
+        print(f"Error in SEO audit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

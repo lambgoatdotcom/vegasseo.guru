@@ -7,22 +7,12 @@ const loadingMessages = {
     "Sampling perspectives",
     "Testing the waters",
     "Catching inspiration",
-    "Floated by curiosity",
     "Collecting vantage",
     "Scouting vantage points",
-    "Unmasking potential",
-    "Mining hidden truths",
-    "Catching mental waves",
-    "Reeling in clarity",
-    "Probing deeper truths",
-    "Ferreting out truths", 
     "Scanning the horizon",
     "Opening vantage",
-    "Boxing out confusion",
-    "Scanning for anomalies",
     "Surfacing hidden layers",
     "Digging up insight",
-    "Peering into mysteries"
   ],
 
   thinking: [
@@ -30,7 +20,6 @@ const loadingMessages = {
     "Mirroring perspectives",
     "Rippling with reason", 
     "Tapping awareness",
-    "Twisting perceptions",
     "Waking the intellect",
     "Flickering with insight",
     "Gliding through reason",
@@ -49,7 +38,6 @@ const loadingMessages = {
   ],
 
   creating: [
-    "Sculpting outcomes",
     "Wiring new ideas",
     "Forging pathways",
     "Riffing on creativity",

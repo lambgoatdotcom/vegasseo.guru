@@ -10,6 +10,7 @@ import TypingIndicator from './TypingIndicator';
 interface ChatInterfaceProps {
   onClose: () => void;
   onAskStart: () => void;
+  isExpanded?: boolean;
 }
 
 interface ChatResponse {
@@ -28,20 +29,210 @@ function formatSourcesForDisplay(sources: Source[]): string {
   return formattedSources;
 }
 
-function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
+function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hi! I'm your Las Vegas SEO Guru. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Ask me anything about optimizing your website for the Las Vegas market!`
+      content: `Hey there! I'm Frankie, your Las Vegas SEO expert. It's ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} and I'm here to help your business stand out in the vibrant Las Vegas market! Whether you're looking to improve your search rankings or attract more visitors to your site, I've got expert strategies to help you succeed. What would you like to know about marketing in Las Vegas?`
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel] = useState<ModelType>('gemini');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const [isSearching, setIsSearching] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [showMoreSuggestions, setShowMoreSuggestions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
+  const randomPrompts = [
+    "What are the best SEO strategies for Las Vegas businesses?",
+    "How can I improve my local search rankings in Las Vegas?",
+    "What are the latest digital marketing trends in Las Vegas?",
+    "How can I optimize my website for Las Vegas visitors?",
+    "Share your top tips for Las Vegas business marketing",
+    "What makes Las Vegas SEO unique?",
+    "How can I showcase Las Vegas attractions on my site?",
+    "What are the best ways to reach Las Vegas tourists online?",
+    "How can I highlight local Las Vegas experiences?",
+    "What content works best for Las Vegas audiences?"
+  ];
+
+  const formatNumberedList = (text: string): string => {
+    // Split into lines while preserving original spacing
+    const lines = text.split('\n');
+    let formatted = '';
+    let inList = false;
+    let listCounter = 1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check if line starts with a number followed by a dot, period, or asterisk
+      const numberMatch = line.match(/^\s*(\d+)[:.)\*]\s*(.*)/);
+      
+      if (numberMatch) {
+        // If this is a numbered item
+        if (!inList) {
+          inList = true;
+          listCounter = parseInt(numberMatch[1]);
+          formatted += '\n';
+        }
+        
+        // Keep original content after the number, preserving spaces
+        formatted += `${listCounter}. ${numberMatch[2]}\n`;
+        listCounter++;
+      } else {
+        // Not a numbered item - preserve the line as is
+        formatted += `${line}\n`;
+        if (line.trim() === '') {
+          inList = false;
+        }
+      }
+    }
+
+    return formatted.trimEnd();
+  };
+
+  const seoAuditPhrases = [
+    'audit',
+    'inspect',
+    'analyze',
+    'look at',
+    'check',
+    'review',
+    'improve',
+    'optimize',
+    'examine'
+  ];
+
+  const detectSEOAuditIntent = (message: string): boolean => {
+    const message_lower = message.toLowerCase();
+    return seoAuditPhrases.some(phrase => 
+      message_lower.includes(phrase) && 
+      (message_lower.includes('page') || message_lower.includes('website') || message_lower.includes('site'))
+    );
+  };
+
+  const extractUrl = (text: string): string | null => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const matches = text.match(urlRegex);
+    return matches ? matches[0] : null;
+  };
+
+  const handleSEOAudit = async (url: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/seo/audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to perform SEO audit');
+      }
+
+      const result = await response.json();
+      return result.report;
+    } catch (error) {
+      console.error('SEO audit error:', error);
+      return "I encountered an error while trying to analyze the page. Please make sure you've provided a valid URL and try again.";
+    }
+  };
+
+  const handleMessage = async (prompt: string) => {
+    if (isLoading) return;
+    
+    const shouldSearch = detectSearchIntent(prompt);
+    const isAuditRequest = detectSEOAuditIntent(prompt);
+    
+    onAskStart();
+    const userMessage: Message = { role: 'user', content: prompt };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setIsSearching(shouldSearch);
+    setStreamingMessage('');
+
+    try {
+      if (isAuditRequest) {
+        const url = extractUrl(prompt);
+        if (!url) {
+          const askForUrlMessage: Message = {
+            role: 'assistant',
+            content: "I'll help you analyze that page for SEO. Could you please share the URL you'd like me to check? Make sure it starts with http:// or https://"
+          };
+          setMessages(prev => [...prev, askForUrlMessage]);
+        } else {
+          const auditReport = await handleSEOAudit(url);
+          const responseMessage: Message = {
+            role: 'assistant',
+            content: auditReport
+          };
+          setMessages(prev => [...prev, responseMessage]);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      const stream = await streamMessage([...messages, userMessage], selectedModel, shouldSearch);
+      let fullResponse = '';
+      let sources: Source[] | undefined;
+      
+      for await (const chunk of stream) {
+        if (chunk.error) {
+          throw new Error(chunk.error);
+        }
+        if (chunk.content) {
+          fullResponse += chunk.content;
+          const mainContent = fullResponse.split(/\n*## Sources/)[0];
+          setStreamingMessage(formatNumberedList(mainContent));
+        }
+        if (chunk.sources) {
+          sources = chunk.sources;
+        }
+      }
+
+      let finalContent = fullResponse.split(/\n*## Sources/)[0].trim();
+      finalContent = formatNumberedList(finalContent);
+      
+      if (sources && sources.length > 0) {
+        finalContent += '\n\n' + formatSourcesForDisplay(sources);
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: finalContent }]);
+    } catch (error: unknown) {
+      console.error('Failed to get response:', error);
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'I apologize, but I encountered an error. Please try again.'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setIsSearching(false);
+      setStreamingMessage('');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    await handleMessage(input.trim());
+  };
+
+  const handleSuggestionClick = async (prompt: string) => {
+    await handleMessage(prompt);
+  };
+
+  const rollTheDice = async () => {
+    const randomIndex = Math.floor(Math.random() * randomPrompts.length);
+    const randomPrompt = randomPrompts[randomIndex];
+    await handleMessage(randomPrompt);
+  };
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -50,10 +241,11 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   };
 
   useEffect(() => {
-    if (streamingMessage || messages.length > 0) {
+    if (!isInitialRender && (streamingMessage || messages.length > 1)) {
       scrollToBottom();
     }
-  }, [streamingMessage, messages]);
+    setIsInitialRender(false);
+  }, [streamingMessage, messages, isInitialRender]);
 
   const detectSearchIntent = (message: string): boolean => {
     const message_lower = message.toLowerCase();
@@ -444,82 +636,37 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
     return false;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const shouldSearch = detectSearchIntent(input);
-    onAskStart();
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-    setIsSearching(shouldSearch);
-    setStreamingMessage('');
-
-    try {
-      let fullResponse = '';
-      let sources: Source[] | undefined;
-      
-      for await (const chunk of streamMessage([...messages, userMessage], selectedModel, shouldSearch)) {
-        if (chunk.error) {
-          throw new Error(chunk.error);
-        }
-        if (chunk.content) {
-          fullResponse += chunk.content;
-          setStreamingMessage(fullResponse);
-        }
-        if (chunk.sources) {
-          sources = chunk.sources;
-        }
-      }
-
-      // Format the final message with sources if available
-      let finalContent = fullResponse;
-      if (sources && sources.length > 0) {
-        finalContent += formatSourcesForDisplay(sources);
-      }
-
-      setMessages(prev => [...prev, { role: 'assistant', content: finalContent }]);
-    } catch (error) {
-      console.error('Failed to get AI response:', error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: shouldSearch 
-          ? 'I apologize, but I encountered an error while searching for information. Please try again or disable search.'
-          : 'I apologize, but I encountered an error. Please try again.'
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setIsSearching(false);
-      setStreamingMessage('');
-    }
+  const handleImproveRankingsClick = async () => {
+    const askForWebsiteMessage: Message = {
+      role: 'assistant',
+      content: "Ready to boost your rankings? Sweet! Drop your website URL here, and I'll deal you a winning hand of SEO strategies tailored just for you. 🎰"
+    };
+    setMessages(prev => [...prev, askForWebsiteMessage]);
   };
 
   return (
     <>
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold">Try the AI Guru</h2>
-          {/* Model selector commented out
+          <h2 className="text-xl font-semibold">Deal Me Some SEO Magic</h2>
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value as ModelType)}
-            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-purple-500"
+            className="ml-4 p-2 border rounded-lg"
           >
             <option value="gemini">Gemini</option>
-            <option value="deepseek">DeepSeek</option>
             <option value="openai">OpenAI</option>
+            <option value="deepseek">Deepseek</option>
           </select>
-          */}
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {isExpanded && (
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -539,37 +686,109 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
             >
               <ReactMarkdown
                 components={{
-                  code: ({ className, children }) => {
-                    const match = /language-(\w+)/.exec(className || '');
-                    return match ? (
-                      <div className="rounded-md text-sm">
-                        <SyntaxHighlighter
-                          style={atomDark}
-                          language={match[1]}
-                          PreTag="div"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    ) : (
-                      <code className={`${className} bg-gray-700/10 rounded px-1 py-0.5`}>
-                        {children}
-                      </code>
+                  // Basic text formatting
+                  p: ({children}) => (
+                    <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+                  ),
+                  
+                  // Headers
+                  h1: ({children}) => (
+                    <h1 className="text-xl font-bold mb-4">{children}</h1>
+                  ),
+                  h2: ({children}) => (
+                    <h2 className="text-lg font-bold mb-3">{children}</h2>
+                  ),
+                  h3: ({children}) => (
+                    <h3 className="text-base font-bold mb-2">{children}</h3>
+                  ),
+
+                  // Lists
+                  ol: ({children}) => (
+                    <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
+                      {children}
+                    </ol>
+                  ),
+                  ul: ({children}) => (
+                    <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
+                      {children}
+                    </ul>
+                  ),
+                  li: ({children}) => {
+                    const content = React.Children.toArray(children);
+                    const text = content.map(child => 
+                      typeof child === 'string' ? child : ''
+                    ).join('');
+                    
+                    // Check if this is a numbered list item with a title
+                    const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
+                    
+                    if (!titleMatch) {
+                      return (
+                        <li className="leading-relaxed">
+                          {children}
+                        </li>
+                      );
+                    }
+                    
+                    const [, title, description] = titleMatch;
+                    return (
+                      <li className="leading-relaxed">
+                        <strong className="block mb-2">{title}</strong>
+                        <span className="block text-gray-700">{description}</span>
+                      </li>
                     );
                   },
-                  p: ({children}) => <p className="mb-4 last:mb-0">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc ml-6 mb-4 last:mb-0">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal ml-6 mb-4 last:mb-0">{children}</ol>,
-                  li: ({children}) => <li className="mb-1">{children}</li>,
+
+                  // Links
                   a: ({href, children}) => (
                     <a 
                       href={href}
-                      className="text-blue-500 hover:text-blue-600 underline"
+                      className="text-blue-500 hover:text-blue-600 underline break-words"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {children}
                     </a>
+                  ),
+
+                  // Code blocks
+                  code: ({className, children}) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const isInline = !match;
+                    return !isInline ? (
+                      <div className="rounded-md my-4">
+                        <SyntaxHighlighter
+                          style={atomDark}
+                          language={match[1]}
+                          PreTag="div"
+                          className="rounded-md"
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    ) : (
+                      <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                        {children}
+                      </code>
+                    );
+                  },
+
+                  // Horizontal rule
+                  hr: () => <hr className="my-4 border-gray-300" />,
+
+                  // Strong and emphasis
+                  strong: ({children}) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({children}) => (
+                    <em className="italic">{children}</em>
+                  ),
+
+                  // Block quote
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
+                      {children}
+                    </blockquote>
                   ),
                 }}
               >
@@ -583,37 +802,109 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
             <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
               <ReactMarkdown
                 components={{
-                  code: ({ className, children }) => {
-                    const match = /language-(\w+)/.exec(className || '');
-                    return match ? (
-                      <div className="rounded-md text-sm">
-                        <SyntaxHighlighter
-                          style={atomDark}
-                          language={match[1]}
-                          PreTag="div"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    ) : (
-                      <code className={`${className} bg-gray-700/10 rounded px-1 py-0.5`}>
-                        {children}
-                      </code>
+                  // Basic text formatting
+                  p: ({children}) => (
+                    <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+                  ),
+                  
+                  // Headers
+                  h1: ({children}) => (
+                    <h1 className="text-xl font-bold mb-4">{children}</h1>
+                  ),
+                  h2: ({children}) => (
+                    <h2 className="text-lg font-bold mb-3">{children}</h2>
+                  ),
+                  h3: ({children}) => (
+                    <h3 className="text-base font-bold mb-2">{children}</h3>
+                  ),
+
+                  // Lists
+                  ol: ({children}) => (
+                    <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
+                      {children}
+                    </ol>
+                  ),
+                  ul: ({children}) => (
+                    <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
+                      {children}
+                    </ul>
+                  ),
+                  li: ({children}) => {
+                    const content = React.Children.toArray(children);
+                    const text = content.map(child => 
+                      typeof child === 'string' ? child : ''
+                    ).join('');
+                    
+                    // Check if this is a numbered list item with a title
+                    const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
+                    
+                    if (!titleMatch) {
+                      return (
+                        <li className="leading-relaxed">
+                          {children}
+                        </li>
+                      );
+                    }
+                    
+                    const [, title, description] = titleMatch;
+                    return (
+                      <li className="leading-relaxed">
+                        <strong className="block mb-2">{title}</strong>
+                        <span className="block text-gray-700">{description}</span>
+                      </li>
                     );
                   },
-                  p: ({children}) => <p className="mb-4 last:mb-0">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc ml-6 mb-4 last:mb-0">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal ml-6 mb-4 last:mb-0">{children}</ol>,
-                  li: ({children}) => <li className="mb-1">{children}</li>,
+
+                  // Links
                   a: ({href, children}) => (
                     <a 
                       href={href}
-                      className="text-blue-500 hover:text-blue-600 underline"
+                      className="text-blue-500 hover:text-blue-600 underline break-words"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {children}
                     </a>
+                  ),
+
+                  // Code blocks
+                  code: ({className, children}) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const isInline = !match;
+                    return !isInline ? (
+                      <div className="rounded-md my-4">
+                        <SyntaxHighlighter
+                          style={atomDark}
+                          language={match[1]}
+                          PreTag="div"
+                          className="rounded-md"
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    ) : (
+                      <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                        {children}
+                      </code>
+                    );
+                  },
+
+                  // Horizontal rule
+                  hr: () => <hr className="my-4 border-gray-300" />,
+
+                  // Strong and emphasis
+                  strong: ({children}) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({children}) => (
+                    <em className="italic">{children}</em>
+                  ),
+
+                  // Block quote
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
+                      {children}
+                    </blockquote>
                   ),
                 }}
               >
@@ -632,24 +923,91 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t p-4">
-        <div className="flex space-x-4">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me about Las Vegas SEO..."
-            className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-          />
+      <div className="border-t">
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="flex space-x-4">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="What's your SEO game plan? Let's make it a winner..."
+              className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
+            />
+            <button
+              type="button"
+              onClick={rollTheDice}
+              className="bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border flex items-center justify-center"
+              title="Roll the dice for a random SEO tip!"
+            >
+              <span className="text-2xl leading-none">🎲</span>
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="p-4 space-y-4 bg-gray-50 rounded-b-xl">
+        <div className="flex flex-wrap gap-2">
           <button
-            type="submit"
-            disabled={isLoading}
-            className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50"
+            onClick={() => handleSuggestionClick("What are the best SEO strategies for Las Vegas businesses?")}
+            className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
           >
-            <Send className="h-5 w-5" />
+            Top Vegas Strategies
+          </button>
+          <button
+            onClick={() => handleSuggestionClick("How can I optimize my website for Las Vegas tourists?")}
+            className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+          >
+            Attract More Visitors
+          </button>
+          <button
+            onClick={() => handleSuggestionClick("What makes Las Vegas SEO unique?")}
+            className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+          >
+            Stand Out in Vegas
+          </button>
+          {showMoreSuggestions && (
+            <>
+              <button
+                onClick={() => handleSuggestionClick("How can I showcase Las Vegas attractions?")}
+                className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+              >
+                Highlight Local Attractions
+              </button>
+              <button
+                onClick={() => handleSuggestionClick("What content works best for Las Vegas audiences?")}
+                className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+              >
+                Create Engaging Content
+              </button>
+              <button
+                onClick={() => handleSuggestionClick("How can I improve my local search rankings?")}
+                className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+              >
+                Boost Local Rankings
+              </button>
+              <button
+                onClick={() => handleSuggestionClick("What are the latest digital marketing trends?")}
+                className="px-4 py-2 text-sm bg-white hover:bg-gray-100 rounded-lg transition-colors text-left border"
+              >
+                Latest Marketing Trends
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowMoreSuggestions(!showMoreSuggestions)}
+            className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 ml-auto"
+          >
+            {showMoreSuggestions ? 'play it safe' : 'raise the stakes'} {showMoreSuggestions ? '↑' : '↓'}
           </button>
         </div>
-      </form>
+      </div>
     </>
   );
 }
