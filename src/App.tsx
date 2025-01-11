@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { MessageSquare, Search, BarChart, Mail, Twitter, Brain } from 'lucide-react';
+import { Mail, Twitter } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import Features from './components/Features';
+import logo from './assets/images/seoguru-trans.png';
 
 function App() {
   const [isAsking, setIsAsking] = useState(false);
@@ -14,8 +15,8 @@ function App() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <a href="/" className="flex items-center hover:opacity-80 transition-opacity">
-                <Brain className="h-8 w-8 text-purple-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">VegasSEO.guru</span>
+                <img src={logo} alt="VegasSEO.guru Logo" className="h-16 w-auto" />
+                <span className="ml-3 text-2xl font-bold text-gray-900">VegasSEO.guru</span>
               </a>
             </div>
             <div className="hidden md:flex items-center space-x-8">
@@ -35,13 +36,13 @@ function App() {
               {/* Left side - Hero content */}
               <div className={`text-left lg:pr-8 transition-all duration-500 ease-in-out ${isAsking ? 'opacity-0 lg:translate-x-[-100%]' : 'opacity-100 lg:translate-x-0'}`}>
                 <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                  Your AI-Powered
+                  Your
                   <span className="text-purple-600"> SEO Guru</span>
                   <br />
                   for Las Vegas
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Unlock the secrets of Las Vegas SEO with our AI expert. Get instant answers, 
+                  Unlock the secrets of Las Vegas SEO. Get instant answers, 
                   content suggestions, and marketing strategies tailored for the Vegas market.
                 </p>
                 <div className="mt-10 flex items-center gap-x-6">
@@ -101,10 +102,10 @@ function App() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center">
-                <Brain className="h-8 w-8 text-purple-400" />
-                <span className="ml-2 text-xl font-bold">VegasSEO.guru</span>
+                <img src={logo} alt="VegasSEO.guru Logo" className="h-12 w-auto brightness-200" />
+                <span className="ml-3 text-2xl font-bold">VegasSEO.guru</span>
               </div>
-              <p className="mt-4 text-gray-400">Your AI-powered SEO companion for dominating Las Vegas search results.</p>
+              <p className="mt-4 text-gray-400">Your SEO companion for dominating Las Vegas search results.</p>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Quick Links</h3>
