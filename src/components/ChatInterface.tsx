@@ -38,31 +38,22 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelType>('deepseek');
-  const [searchEnabled, setSearchEnabled] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    if (messagesEndRef.current && messageContainerRef.current) {
-      const container = messageContainerRef.current;
-      const endElement = messagesEndRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const endElementRect = endElement.getBoundingClientRect();
-      
-      // Only auto-scroll if the end element is not above the visible area
-      if (endElementRect.top >= containerRect.top) {
-        endElement.scrollIntoView({ behavior: 'smooth' });
-      }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   useEffect(() => {
-    if (streamingMessage) {
+    if (streamingMessage || messages.length > 0) {
       scrollToBottom();
     }
-  }, [streamingMessage]);
+  }, [streamingMessage, messages]);
 
   const detectSearchIntent = (message: string): boolean => {
     const message_lower = message.toLowerCase();
@@ -457,7 +448,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const shouldSearch = searchEnabled || detectSearchIntent(input);
+    const shouldSearch = detectSearchIntent(input);
     onAskStart();
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -520,17 +511,6 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
           </select>
-          <button
-            onClick={() => setSearchEnabled(!searchEnabled)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 ${
-              searchEnabled 
-                ? 'bg-green-500 text-white hover:bg-green-600' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <span className={isSearching ? 'animate-spin' : ''}>🔍</span>
-            <span>{searchEnabled ? 'Search On' : 'Search Off'}</span>
-          </button>
         </div>
         <button
           onClick={onClose}
