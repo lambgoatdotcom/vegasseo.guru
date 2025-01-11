@@ -37,7 +37,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
+  const [selectedModel] = useState<ModelType>('gemini');
   const [isSearching, setIsSearching] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -502,6 +502,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center space-x-4">
           <h2 className="text-xl font-semibold">Try the AI Guru</h2>
+          {/* Model selector commented out
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value as ModelType)}
@@ -511,6 +512,7 @@ function ChatInterface({ onClose, onAskStart }: ChatInterfaceProps) {
             <option value="deepseek">DeepSeek</option>
             <option value="openai">OpenAI</option>
           </select>
+          */}
         </div>
         <button
           onClick={onClose}
