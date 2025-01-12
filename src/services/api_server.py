@@ -1,15 +1,22 @@
-from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List, Optional, AsyncGenerator
-import aiohttp
-import os
-from dotenv import load_dotenv
 import asyncio
 import json
-from ..config.character import SYSTEM_MESSAGE
-from .agents.content_analyzer import ContentAnalysisAgent, ContentAnalysisConfig
+import os
+import sys
+from pathlib import Path
+from typing import List, Optional, AsyncGenerator
+
+from fastapi import FastAPI, HTTPException, Response, Request
+from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel
+from dotenv import load_dotenv
+import aiohttp
 from bs4 import BeautifulSoup
+
+# Add the src directory to the Python path
+sys.path.append(str(Path(__file__).parent.parent))
+
+from config.character import SYSTEM_MESSAGE
+from .agents.content_analyzer import ContentAnalysisAgent, ContentAnalysisConfig
 
 load_dotenv()
 
@@ -308,8 +315,7 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
                     "temperature": 0.7,
                     "topK": 1,
                     "topP": 1,
-                    "maxOutputTokens": 2048,
-                    "model": "gemini-2.0-flash-exp"
+                    "maxOutputTokens": 2048
                 },
                 "safetySettings": [
                     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},

@@ -116,9 +116,15 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
   };
 
   const extractUrl = (text: string): string | null => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const matches = text.match(urlRegex);
-    return matches ? matches[0] : null;
+    // Match URLs with or without protocol
+    const urlPattern = /(?:https?:\/\/)?(?:www\.)?([^\s]+\.[^\s]+)/i;
+    const match = text.match(urlPattern);
+    if (match) {
+      const url = match[0];
+      // Add https:// if no protocol is specified
+      return url.startsWith('http') ? url : `https://${url}`;
+    }
+    return null;
   };
 
   const handleSEOAudit = async (url: string): Promise<string> => {
@@ -163,7 +169,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
         if (!url) {
           const askForUrlMessage: Message = {
             role: 'assistant',
-            content: "I'll help you analyze that page for SEO. Could you please share the URL you'd like me to check? Make sure it starts with http:// or https://"
+            content: "I'll help you analyze that page for SEO! Could you please share the website URL you'd like me to check?"
           };
           setMessages(prev => [...prev, askForUrlMessage]);
         } else {
@@ -639,7 +645,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
   const handleImproveRankingsClick = async () => {
     const askForWebsiteMessage: Message = {
       role: 'assistant',
-      content: "Ready to boost your rankings? Sweet! Drop your website URL here, and I'll deal you a winning hand of SEO strategies tailored just for you. 🎰"
+      content: "I'll help you analyze that page for SEO! Could you please share the website URL you'd like me to check?"
     };
     setMessages(prev => [...prev, askForWebsiteMessage]);
   };
