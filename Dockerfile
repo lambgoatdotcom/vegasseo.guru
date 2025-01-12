@@ -10,9 +10,8 @@ RUN npm run build
 FROM python:3.9-slim AS backend-builder
 WORKDIR /app
 RUN python -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN . /app/venv/bin/activate && pip install --no-cache-dir -r requirements.txt
 
 # Final stage using Ghost as base
 FROM ghost:5
@@ -22,35 +21,31 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
-    nodejs \
-    npm \
+    rsync \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user and set up directories
+# Set up directories
 RUN mkdir -p /app /home/ghost/.npm-global && \
-    chown -R node:node /app /home/ghost
+    chown -R node:node /app
 
-# Set up Python virtual environment
-RUN python3 -m venv /app/venv && \
-    chown -R node:node /app/venv
-ENV PATH="/app/venv/bin:$PATH"
-ENV PYTHONPATH="/app"
-
-# Set up npm global directory
-ENV NPM_CONFIG_PREFIX=/home/ghost/.npm-global
-ENV PATH="/home/ghost/.npm-global/bin:$PATH"
-
-# Install global npm packages
+# Install serve globally
 RUN npm install -g serve
 
-# Copy builds from previous stages
+# Copy frontend build
 COPY --from=frontend-builder --chown=node:node /app/dist /app/dist
+
+# Copy backend files
 COPY --from=backend-builder --chown=node:node /app/venv /app/venv
 COPY --chown=node:node src /app/src
-COPY --chown=node:node start.sh /app/start.sh
+COPY --chown=node:node requirements.txt /app/
 
+# Copy startup script
+COPY --chown=node:node start.sh /app/start.sh
 WORKDIR /app
 RUN chmod +x start.sh
 
-CMD ["./start.sh"]
+ENV PYTHONPATH=/app
+ENV PATH="/app/venv/bin:$PATH"
+
+CMD ["/app/start.sh"]

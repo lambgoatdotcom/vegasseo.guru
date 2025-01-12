@@ -2,21 +2,35 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    image: obelisk/vegasguru:latest
+    platform: linux/arm64
+    user: root
+    command: /app/start.sh
     ports:
       - "5173:5173"  # Frontend
       - "8000:8000"  # FastAPI
       - "2368:2368"  # Ghost
     environment:
       - NODE_ENV=development
+      - database__client=mysql
+      - database__connection__host=db
+      - database__connection__user=ghost
+      - database__connection__password=ghostpass
+      - database__connection__database=ghost
+      - url=http://0.0.0.0:2368
       - VITE_GHOST_CONTENT_API_KEY=${VITE_GHOST_CONTENT_API_KEY}
       - VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
       - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY}
       - VITE_BRAVE_API_KEY=${VITE_BRAVE_API_KEY}
       - VITE_DEEPSEEK_API_KEY=${VITE_DEEPSEEK_API_KEY}
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
     volumes:
       - ghost-content:/var/lib/ghost/content
       - .env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2368"]
       interval: 30s
@@ -24,5 +38,33 @@ services:
       retries: 3
     restart: unless-stopped
 
+  db:
+    image: mysql:8.0.32
+    platform: linux/arm64
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --innodb-use-native-aio=0
+      - --innodb-flush-method=fsync
+      - --skip-innodb-doublewrite
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghostpass
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/mysql
+    tmpfs:
+      - /tmp
+      - /var/run/mysqld
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
 volumes:
-  ghost-content: 
+  ghost-content:
+  db-data:

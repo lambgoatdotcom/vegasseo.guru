@@ -1,18 +1,20 @@
 services:
   app:
     image: obelisk/vegasguru:latest
-    platform: linux/amd64
     user: root
     command: /app/start.sh
     ports:
-      - "5173:5173"  # Frontend
-      - "8000:8000"  # FastAPI
-      - "2368:2368"  # Ghost
+      - "5173:5173"
+      - "8000:8000"
+      - "2368:2368"
     environment:
       NODE_ENV: development
+      database__client: mysql
+      database__connection__host: db
+      database__connection__user: ghost
+      database__connection__password: ghostpass
+      database__connection__database: ghost
       url: http://0.0.0.0:2368
-      PYTHONPATH: /app
-      PYTHONUNBUFFERED: 1
       VITE_GHOST_CONTENT_API_KEY: ${VITE_GHOST_CONTENT_API_KEY}
       VITE_OPENAI_API_KEY: ${VITE_OPENAI_API_KEY}
       VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
@@ -20,14 +22,40 @@ services:
       VITE_DEEPSEEK_API_KEY: ${VITE_DEEPSEEK_API_KEY}
     volumes:
       - ghost-content:/var/lib/ghost/content
-      - /.env:/app/.env
+      - .env:/app/.env
+    networks:
+      - app-network
+    depends_on:
+      - db
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2368"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:2368"]
+      interval: 1m30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
+      start_period: 40s
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghostpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   ghost-content:
-    driver: local
+    external: true
+  mysql_data:
+
+networks:
+  app-network:
+    driver: overlay
