@@ -79,14 +79,20 @@ echo 'export NPM_CONFIG_PREFIX=/home/ghost/.npm-global' >> /home/ghost/.profile
 echo "Starting Ghost..."
 # Install Ghost CLI as ghost user
 echo "Installing Ghost CLI..."
-runuser -u ghost -- /bin/sh -c "NPM_CONFIG_PREFIX=/home/ghost/.npm-global npm install -g ghost-cli@latest"
+su-exec ghost /bin/sh -c "NPM_CONFIG_PREFIX=/home/ghost/.npm-global npm install -g ghost-cli@latest"
 
 # Switch to ghost user and install/start Ghost
 cd /var/lib/ghost
+
+# Clean the directory before installation
+echo "Cleaning Ghost directory..."
+su-exec ghost /bin/sh -c "rm -rf /var/lib/ghost/*"
+
 echo "Installing Ghost..."
-runuser -u ghost -- /bin/sh -c "source /home/ghost/.profile && cd /var/lib/ghost && ghost install local --no-prompt --no-stack --no-setup --dir /var/lib/ghost"
+su-exec ghost /bin/sh -c "source /home/ghost/.profile && cd /var/lib/ghost && ghost install local --no-prompt --no-stack --no-setup --dir /var/lib/ghost"
+
 echo "Starting Ghost..."
-runuser -u ghost -- /bin/sh -c "source /home/ghost/.profile && cd /var/lib/ghost && ghost start --development --no-setup" &
+su-exec ghost /bin/sh -c "source /home/ghost/.profile && cd /var/lib/ghost && ghost start --development --no-setup" &
 sleep 15  # Give Ghost more time to initialize
 
 if ! wait_for_service 0.0.0.0 2368 "Ghost"; then
