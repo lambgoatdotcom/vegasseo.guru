@@ -1,26 +1,33 @@
-version: '3.8'
-
 services:
-  vegasguru:
+  app:
     image: obelisk/vegasguru:latest
     platform: linux/amd64
     user: root
-    command: sh -c "apk add --no-cache su-exec && /app/start.sh"
+    command: /app/start.sh
     ports:
-      - "5174:5173"  # Frontend
-      - "8001:8000"  # Backend API
-      - "2369:2368"  # Ghost
-    env_file:
-      - .env
+      - "5173:5173"  # Frontend
+      - "8000:8000"  # FastAPI
+      - "2368:2368"  # Ghost
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       url: http://0.0.0.0:2368
       PYTHONPATH: /app
       PYTHONUNBUFFERED: 1
+      VITE_GHOST_CONTENT_API_KEY: ${VITE_GHOST_CONTENT_API_KEY}
+      VITE_OPENAI_API_KEY: ${VITE_OPENAI_API_KEY}
+      VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
+      VITE_BRAVE_API_KEY: ${VITE_BRAVE_API_KEY}
+      VITE_DEEPSEEK_API_KEY: ${VITE_DEEPSEEK_API_KEY}
     volumes:
-      - ghost_content:/var/lib/ghost/content
+      - ghost-content:/var/lib/ghost/content
+      - /.env:/app/.env
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2368"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
 
 volumes:
-  ghost_content:
-    driver: local 
+  ghost-content:
+    driver: local
