@@ -228,10 +228,10 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
     await handleMessage(prompt);
   };
 
-  const rollTheDice = async () => {
+  const rollTheDice = () => {
     const randomIndex = Math.floor(Math.random() * randomPrompts.length);
     const randomPrompt = randomPrompts[randomIndex];
-    await handleMessage(randomPrompt);
+    setInput(randomPrompt);
   };
 
   const scrollToBottom = () => {
@@ -947,31 +947,29 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
       </div>
 
       <div className="border-t">
-        <form onSubmit={handleSubmit} className="p-4">
-          <div className="flex space-x-4">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="What's your SEO game plan? Let's make it a winner..."
-              className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-            />
-            <button
-              type="button"
-              onClick={rollTheDice}
-              className="bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border flex items-center justify-center"
-              title="Roll the dice for a random SEO tip!"
-            >
-              <span className="text-2xl leading-none">🎲</span>
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              <Send className="h-5 w-5" />
-            </button>
-          </div>
+        <form onSubmit={handleSubmit} className="flex items-center p-4 space-x-2">
+          <button
+            type="button"
+            onClick={rollTheDice}
+            className="p-2 text-gray-600 hover:text-gray-900 hover:scale-110 active:scale-95 transition-all duration-200"
+            aria-label="Roll the dice"
+          >
+            🎲
+          </button>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Hit me with your Vegas SEO questions..."
+            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button
+            type="submit"
+            className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+            disabled={!input.trim() || isLoading}
+          >
+            <Send className="h-5 w-5" />
+          </button>
         </form>
       </div>
 
