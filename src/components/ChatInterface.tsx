@@ -677,246 +677,269 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
               message.role === 'assistant' ? 'justify-start' : 'justify-end'
             }`}
           >
-            <div
-              className={`max-w-[80%] rounded-lg p-4 ${
-                message.role === 'assistant'
-                  ? 'bg-gray-100'
-                  : 'bg-purple-500 text-white'
-              }`}
-            >
-              <ReactMarkdown
-                components={{
-                  // Basic text formatting
-                  p: ({children}) => (
-                    <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
-                  ),
-                  
-                  // Headers
-                  h1: ({children}) => (
-                    <h1 className="text-xl font-bold mb-4">{children}</h1>
-                  ),
-                  h2: ({children}) => (
-                    <h2 className="text-lg font-bold mb-3">{children}</h2>
-                  ),
-                  h3: ({children}) => (
-                    <h3 className="text-base font-bold mb-2">{children}</h3>
-                  ),
+            <div className="flex items-end">
+              {message.role === 'assistant' && (
+                <img 
+                  src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                  alt="SEO Guru" 
+                  className="w-16 h-16 rounded-full mr-2"
+                />
+              )}
+              <div
+                className={`max-w-[80%] rounded-lg p-4 ${
+                  message.role === 'assistant'
+                    ? 'bg-gray-100'
+                    : 'bg-purple-500 text-white'
+                }`}
+              >
+                <ReactMarkdown
+                  components={{
+                    // Basic text formatting
+                    p: ({children}) => (
+                      <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+                    ),
+                    
+                    // Headers
+                    h1: ({children}) => (
+                      <h1 className="text-xl font-bold mb-4">{children}</h1>
+                    ),
+                    h2: ({children}) => (
+                      <h2 className="text-lg font-bold mb-3">{children}</h2>
+                    ),
+                    h3: ({children}) => (
+                      <h3 className="text-base font-bold mb-2">{children}</h3>
+                    ),
 
-                  // Lists
-                  ol: ({children}) => (
-                    <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
-                      {children}
-                    </ol>
-                  ),
-                  ul: ({children}) => (
-                    <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
-                      {children}
-                    </ul>
-                  ),
-                  li: ({children}) => {
-                    const content = React.Children.toArray(children);
-                    const text = content.map(child => 
-                      typeof child === 'string' ? child : ''
-                    ).join('');
-                    
-                    // Check if this is a numbered list item with a title
-                    const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
-                    
-                    if (!titleMatch) {
+                    // Lists
+                    ol: ({children}) => (
+                      <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
+                        {children}
+                      </ol>
+                    ),
+                    ul: ({children}) => (
+                      <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({children}) => {
+                      const content = React.Children.toArray(children);
+                      const text = content.map(child => 
+                        typeof child === 'string' ? child : ''
+                      ).join('');
+                      
+                      // Check if this is a numbered list item with a title
+                      const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
+                      
+                      if (!titleMatch) {
+                        return (
+                          <li className="leading-relaxed">
+                            {children}
+                          </li>
+                        );
+                      }
+                      
+                      const [, title, description] = titleMatch;
                       return (
                         <li className="leading-relaxed">
-                          {children}
+                          <strong className="block mb-2">{title}</strong>
+                          <span className="block text-gray-700">{description}</span>
                         </li>
                       );
-                    }
-                    
-                    const [, title, description] = titleMatch;
-                    return (
-                      <li className="leading-relaxed">
-                        <strong className="block mb-2">{title}</strong>
-                        <span className="block text-gray-700">{description}</span>
-                      </li>
-                    );
-                  },
+                    },
 
-                  // Links
-                  a: ({href, children}) => (
-                    <a 
-                      href={href}
-                      className="text-blue-500 hover:text-blue-600 underline break-words"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {children}
-                    </a>
-                  ),
-
-                  // Code blocks
-                  code: ({className, children}) => {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const isInline = !match;
-                    return !isInline ? (
-                      <div className="rounded-md my-4">
-                        <SyntaxHighlighter
-                          style={atomDark}
-                          language={match[1]}
-                          PreTag="div"
-                          className="rounded-md"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    ) : (
-                      <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                    // Links
+                    a: ({href, children}) => (
+                      <a 
+                        href={href}
+                        className="text-blue-500 hover:text-blue-600 underline break-words"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {children}
-                      </code>
-                    );
-                  },
+                      </a>
+                    ),
 
-                  // Horizontal rule
-                  hr: () => <hr className="my-4 border-gray-300" />,
+                    // Code blocks
+                    code: ({className, children}) => {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !match;
+                      return !isInline ? (
+                        <div className="rounded-md my-4">
+                          <SyntaxHighlighter
+                            style={atomDark}
+                            language={match[1]}
+                            PreTag="div"
+                            className="rounded-md"
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        </div>
+                      ) : (
+                        <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                          {children}
+                        </code>
+                      );
+                    },
 
-                  // Strong and emphasis
-                  strong: ({children}) => (
-                    <strong className="font-semibold">{children}</strong>
-                  ),
-                  em: ({children}) => (
-                    <em className="italic">{children}</em>
-                  ),
+                    // Horizontal rule
+                    hr: () => <hr className="my-4 border-gray-300" />,
 
-                  // Block quote
-                  blockquote: ({children}) => (
-                    <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
-                      {children}
-                    </blockquote>
-                  ),
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+                    // Strong and emphasis
+                    strong: ({children}) => (
+                      <strong className="font-semibold">{children}</strong>
+                    ),
+                    em: ({children}) => (
+                      <em className="italic">{children}</em>
+                    ),
+
+                    // Block quote
+                    blockquote: ({children}) => (
+                      <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
+                        {children}
+                      </blockquote>
+                    ),
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}
         {isLoading && streamingMessage && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
-              <ReactMarkdown
-                components={{
-                  // Basic text formatting
-                  p: ({children}) => (
-                    <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
-                  ),
-                  
-                  // Headers
-                  h1: ({children}) => (
-                    <h1 className="text-xl font-bold mb-4">{children}</h1>
-                  ),
-                  h2: ({children}) => (
-                    <h2 className="text-lg font-bold mb-3">{children}</h2>
-                  ),
-                  h3: ({children}) => (
-                    <h3 className="text-base font-bold mb-2">{children}</h3>
-                  ),
+            <div className="flex items-end">
+              <img 
+                src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                alt="SEO Guru" 
+                className="w-16 h-16 rounded-full mr-2"
+              />
+              <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
+                <ReactMarkdown
+                  components={{
+                    // Basic text formatting
+                    p: ({children}) => (
+                      <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+                    ),
+                    
+                    // Headers
+                    h1: ({children}) => (
+                      <h1 className="text-xl font-bold mb-4">{children}</h1>
+                    ),
+                    h2: ({children}) => (
+                      <h2 className="text-lg font-bold mb-3">{children}</h2>
+                    ),
+                    h3: ({children}) => (
+                      <h3 className="text-base font-bold mb-2">{children}</h3>
+                    ),
 
-                  // Lists
-                  ol: ({children}) => (
-                    <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
-                      {children}
-                    </ol>
-                  ),
-                  ul: ({children}) => (
-                    <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
-                      {children}
-                    </ul>
-                  ),
-                  li: ({children}) => {
-                    const content = React.Children.toArray(children);
-                    const text = content.map(child => 
-                      typeof child === 'string' ? child : ''
-                    ).join('');
-                    
-                    // Check if this is a numbered list item with a title
-                    const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
-                    
-                    if (!titleMatch) {
+                    // Lists
+                    ol: ({children}) => (
+                      <ol className="mb-4 last:mb-0 pl-4 list-decimal space-y-4 [counter-reset:list-counter] [&>li]:relative [&>li]:pl-2">
+                        {children}
+                      </ol>
+                    ),
+                    ul: ({children}) => (
+                      <ul className="mb-4 last:mb-0 pl-4 list-disc space-y-2">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({children}) => {
+                      const content = React.Children.toArray(children);
+                      const text = content.map(child => 
+                        typeof child === 'string' ? child : ''
+                      ).join('');
+                      
+                      // Check if this is a numbered list item with a title
+                      const titleMatch = text.match(/^([^:.]+)[:.]?\s*(.+)$/);
+                      
+                      if (!titleMatch) {
+                        return (
+                          <li className="leading-relaxed">
+                            {children}
+                          </li>
+                        );
+                      }
+                      
+                      const [, title, description] = titleMatch;
                       return (
                         <li className="leading-relaxed">
-                          {children}
+                          <strong className="block mb-2">{title}</strong>
+                          <span className="block text-gray-700">{description}</span>
                         </li>
                       );
-                    }
-                    
-                    const [, title, description] = titleMatch;
-                    return (
-                      <li className="leading-relaxed">
-                        <strong className="block mb-2">{title}</strong>
-                        <span className="block text-gray-700">{description}</span>
-                      </li>
-                    );
-                  },
+                    },
 
-                  // Links
-                  a: ({href, children}) => (
-                    <a 
-                      href={href}
-                      className="text-blue-500 hover:text-blue-600 underline break-words"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {children}
-                    </a>
-                  ),
-
-                  // Code blocks
-                  code: ({className, children}) => {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const isInline = !match;
-                    return !isInline ? (
-                      <div className="rounded-md my-4">
-                        <SyntaxHighlighter
-                          style={atomDark}
-                          language={match[1]}
-                          PreTag="div"
-                          className="rounded-md"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    ) : (
-                      <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                    // Links
+                    a: ({href, children}) => (
+                      <a 
+                        href={href}
+                        className="text-blue-500 hover:text-blue-600 underline break-words"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {children}
-                      </code>
-                    );
-                  },
+                      </a>
+                    ),
 
-                  // Horizontal rule
-                  hr: () => <hr className="my-4 border-gray-300" />,
+                    // Code blocks
+                    code: ({className, children}) => {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !match;
+                      return !isInline ? (
+                        <div className="rounded-md my-4">
+                          <SyntaxHighlighter
+                            style={atomDark}
+                            language={match[1]}
+                            PreTag="div"
+                            className="rounded-md"
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        </div>
+                      ) : (
+                        <code className="bg-gray-700/10 rounded px-1.5 py-0.5 text-sm">
+                          {children}
+                        </code>
+                      );
+                    },
 
-                  // Strong and emphasis
-                  strong: ({children}) => (
-                    <strong className="font-semibold">{children}</strong>
-                  ),
-                  em: ({children}) => (
-                    <em className="italic">{children}</em>
-                  ),
+                    // Horizontal rule
+                    hr: () => <hr className="my-4 border-gray-300" />,
 
-                  // Block quote
-                  blockquote: ({children}) => (
-                    <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
-                      {children}
-                    </blockquote>
-                  ),
-                }}
-              >
-                {streamingMessage}
-              </ReactMarkdown>
+                    // Strong and emphasis
+                    strong: ({children}) => (
+                      <strong className="font-semibold">{children}</strong>
+                    ),
+                    em: ({children}) => (
+                      <em className="italic">{children}</em>
+                    ),
+
+                    // Block quote
+                    blockquote: ({children}) => (
+                      <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic">
+                        {children}
+                      </blockquote>
+                    ),
+                  }}
+                >
+                  {streamingMessage}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         )}
         {isLoading && !streamingMessage && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
-              <TypingIndicator action={isSearching ? 'searching' : 'thinking'} />
+            <div className="flex items-end">
+              <img 
+                src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                alt="SEO Guru" 
+                className="w-16 h-16 rounded-full mr-2"
+              />
+              <div className="max-w-[80%] rounded-lg p-4 bg-gray-100">
+                <TypingIndicator action={isSearching ? 'searching' : 'thinking'} />
+              </div>
             </div>
           </div>
         )}

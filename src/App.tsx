@@ -40,24 +40,22 @@ function App() {
         {/* Hero Section with integrated chat */}
         <div className="pt-8 lg:pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-8 items-center min-h-[calc(100vh-8rem)] py-8">
+            <div className="grid lg:grid-cols-[45%_55%] gap-8 items-center min-h-[calc(100vh-8rem)] py-8">
               {/* Left side - Hero content */}
               <div className={`text-left lg:pr-8 transition-all duration-500 ease-in-out ${isAsking ? 'opacity-0 lg:translate-x-[-100%]' : 'opacity-100 lg:translate-x-0'}`}>
                 <div className="flex flex-col items-center lg:items-start">
                   <img 
                     src="/src/assets/images/frankie.png" 
                     alt="Las Vegas SEO Guru" 
-                    className="w-64 h-64 mb-8 rounded-2xl shadow-lg aspect-square object-cover"
+                    className="w-80 h-80 mb-8 rounded-2xl shadow-lg aspect-square object-cover"
                   />
                   <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                    Your
-                    <span className="text-purple-600"> SEO Guru</span>
-                    <br />
-                    for Las Vegas
+                    Dominate 
+                    <span className="text-purple-600"> Las Vegas Search </span>
+                    Like a Local Pro
                   </h1>
                   <p className="mt-6 text-lg leading-8 text-gray-600">
-                    Unlock the secrets of Las Vegas SEO. Get instant answers, 
-                    content suggestions, and marketing strategies tailored for the Vegas market.
+                    Get instant answers, expert strategies, and AI-driven insights to boost your rankings in the competitive Las Vegas market.
                   </p>
                   <div className="mt-10 flex items-center gap-x-6">
                     <a href="#features" className="text-lg font-semibold leading-6 text-gray-900 hover:text-purple-600 transition-colors">
@@ -68,9 +66,9 @@ function App() {
               </div>
               
               {/* Right side - Chat interface */}
-              <div className={`bg-white rounded-xl shadow-xl h-[600px] flex flex-col transition-all duration-500 ease-in-out ${
+              <div className={`bg-white rounded-xl shadow-xl h-[700px] flex flex-col transition-all duration-500 ease-in-out ${
                 isAsking 
-                  ? 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[80vh] max-w-4xl z-50' 
+                  ? 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] h-[90vh] max-w-5xl z-50' 
                   : ''
               }`}>
                 <ChatInterface 
