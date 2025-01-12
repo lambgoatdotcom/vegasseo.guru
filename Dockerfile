@@ -1,42 +1,54 @@
 # Build stage for frontend
-FROM node:18 AS frontend-build
+FROM node:18-alpine AS frontend-builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 
-# Backend stage
-FROM python:3.9 AS backend
+# Python backend stage
+FROM python:3.9-alpine AS backend-builder
 WORKDIR /app
+RUN python -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
 COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY src/ ./src/
-ENV PYTHONPATH=/app
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Ghost stage
-FROM ghost:5.105.0 AS ghost
+# Final stage using Ghost as base
+FROM ghost:5-alpine AS final
 
-# Final stage
-FROM node:18-slim
-WORKDIR /app
+# Install system dependencies
+RUN apk add --no-cache python3 py3-pip nodejs npm
 
-# Copy built frontend
-COPY --from=frontend-build /app/dist ./dist
+# Create app user and set up directories
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    mkdir -p /app /home/appuser/.npm-global && \
+    chown -R appuser:appgroup /app /home/appuser
 
-# Copy backend
-COPY --from=backend /app ./
-COPY --from=backend /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+# Set up Python virtual environment
+RUN python3 -m venv /app/venv && \
+    chown -R appuser:appgroup /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+ENV PYTHONPATH="/app"
 
-# Copy Ghost
-COPY --from=ghost /var/lib/ghost /var/lib/ghost
+# Set up npm global directory
+ENV NPM_CONFIG_PREFIX=/home/appuser/.npm-global
+ENV PATH="/home/appuser/.npm-global/bin:$PATH"
 
-# Install serve for frontend
+# Switch to non-root user
+USER appuser
+
+# Install global npm packages
 RUN npm install -g serve
 
-# Copy start script
-COPY start.sh .
+# Copy builds from previous stages
+COPY --from=frontend-builder --chown=appuser:appgroup /app/dist /app/dist
+COPY --from=backend-builder --chown=appuser:appgroup /app/venv /app/venv
+COPY --chown=appuser:appgroup src /app/src
+COPY --chown=appuser:appgroup start.sh /app/start.sh
+
+WORKDIR /app
 RUN chmod +x start.sh
 
-EXPOSE 5173 8000 2368
 CMD ["./start.sh"] 

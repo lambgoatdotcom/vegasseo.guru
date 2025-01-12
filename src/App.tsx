@@ -56,12 +56,12 @@ function App() {
                           className="w-80 h-80 mb-8 rounded-2xl shadow-lg aspect-square object-cover"
                         />
                         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                          Dominate
-                          <span className="text-purple-600"> Vegas Search </span>
-                          with AI-Powered SEO
+                          Hey there! I'm Your
+                          <span className="text-purple-600"> Vegas SEO </span>
+                          Expert
                         </h1>
                         <p className="mt-6 text-lg leading-8 text-gray-600">
-                          Get instant answers, expert strategies, and AI-driven insights to boost your rankings in the competitive Las Vegas market.
+                          Welcome to the main event, champ. If you're done playing small, I've got the winning formula: AI SEO that crushes the competition. Get top-tier intel, pro-level strategy, and real-time data that'll have your site shining brighter than the Strip after dark.
                         </p>
                         <div className="mt-10 flex items-center gap-x-6">
                           <a href="#features" className="text-lg font-semibold leading-6 text-gray-900 hover:text-purple-600 transition-colors">

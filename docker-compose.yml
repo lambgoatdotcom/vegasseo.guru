@@ -5,7 +5,7 @@ services:
     build: .
     ports:
       - "5173:5173"  # Frontend
-      - "8000:8000"  # Backend API
+      - "8000:8000"  # FastAPI
       - "2368:2368"  # Ghost
     environment:
       - NODE_ENV=development
@@ -17,6 +17,12 @@ services:
     volumes:
       - ghost-content:/var/lib/ghost/content
       - .env:/app/.env
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2368"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   ghost-content: 
