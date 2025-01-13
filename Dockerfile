@@ -23,17 +23,41 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     rsync \
     netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
+    bash \
+    python3-uvicorn \
+    python3-fastapi \
+    python3-dotenv \
+    python3-aiohttp \
+    python3-bs4 \
+    python3-pydantic \
+    python3-typing-extensions \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --break-system-packages textblob
 
 # Set up directories
-RUN mkdir -p /app /home/ghost/.npm-global && \
-    chown -R node:node /app
+RUN mkdir -p /app /home/node/.npm-global && \
+    chown -R node:node /app /home/node
 
 # Install serve globally
+USER node
+ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
+ENV PATH="/home/node/.npm-global/bin:$PATH"
 RUN npm install -g serve
 
 # Copy frontend build
 COPY --from=frontend-builder --chown=node:node /app/dist /app/dist
+COPY --from=frontend-builder --chown=node:node /app/package*.json /app/
+COPY --from=frontend-builder --chown=node:node /app/src /app/src
+COPY --from=frontend-builder --chown=node:node /app/index.html /app/
+COPY --from=frontend-builder --chown=node:node /app/tsconfig*.json /app/
+COPY --from=frontend-builder --chown=node:node /app/vite.config.ts /app/
+COPY --from=frontend-builder --chown=node:node /app/postcss.config.js /app/
+COPY --from=frontend-builder --chown=node:node /app/tailwind.config.js /app/
+
+# Install frontend dependencies
+USER node
+WORKDIR /app
+RUN npm ci
 
 # Copy backend files
 COPY --from=backend-builder --chown=node:node /app/venv /app/venv
@@ -48,4 +72,5 @@ RUN chmod +x start.sh
 ENV PYTHONPATH=/app
 ENV PATH="/app/venv/bin:$PATH"
 
+USER root
 CMD ["/app/start.sh"]

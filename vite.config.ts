@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_DEEPSEEK_API_KEY': JSON.stringify(env.VITE_DEEPSEEK_API_KEY)
     },
     server: {
+      host: '0.0.0.0',
+      port: 5173,
       proxy: {
         '/api': {
           target: 'http://localhost:8000',
