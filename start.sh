@@ -20,6 +20,50 @@ echo "Setting up ghost user and group..."
 groupadd -f node || true
 useradd -r -g node -d /var/lib/ghost node || true
 
+# Set up npm environment first
+echo "Setting up npm environment..."
+mkdir -p /home/node/.npm-global
+chown -R node:node /home/node
+
+# Create and configure .profile
+cat > /home/node/.profile << 'EOF'
+export PATH=/home/node/.npm-global/bin:$PATH
+export NPM_CONFIG_PREFIX=/home/node/.npm-global
+EOF
+
+chown node:node /home/node/.profile
+
+# Wait for MySQL to be ready
+echo "Waiting for MySQL..."
+wait_for_service db 3306 "MySQL"
+
+# Setup process management
+pids=()
+cleanup() {
+    echo "Cleaning up processes..."
+    for pid in "${pids[@]}"; do
+        if kill -0 $pid 2>/dev/null; then
+            kill $pid
+        fi
+    done
+    exit 0
+}
+trap cleanup SIGTERM SIGINT
+
+# Start frontend first
+echo "Starting frontend..."
+cd /app
+echo "Installing frontend dependencies..."
+su node -c "bash -c 'source /home/node/.profile && npm install -D tailwindcss postcss autoprefixer && VITE_HOST=0.0.0.0 npm run dev'" &
+pids+=($!)
+
+# Start FastAPI backend
+echo "Starting FastAPI backend..."
+cd /app
+. /app/venv/bin/activate
+python3 -m uvicorn src.services.api_server:app --host 0.0.0.0 --port 8000 --reload &
+pids+=($!)
+
 # Set up Ghost directory structure
 echo "Setting up Ghost directory structure..."
 GHOST_INSTALL_DIR="/var/lib/ghost"
@@ -204,45 +248,26 @@ EOF
 chown -R node:node "$GHOST_CONTENT_DIR"
 chown -R node:node "$GHOST_INSTALL_DIR"
 
-# Set up npm environment
-echo "Setting up npm environment..."
-mkdir -p /home/node/.npm-global
-chown -R node:node /home/node
-
-# Create and configure .profile
-cat > /home/node/.profile << 'EOF'
-export PATH=/home/node/.npm-global/bin:$PATH
-export NPM_CONFIG_PREFIX=/home/node/.npm-global
-EOF
-
-chown node:node /home/node/.profile
-
-# Wait for MySQL to be ready
-echo "Waiting for MySQL..."
-wait_for_service db 3306 "MySQL"
-
-# Start Ghost
+# Start Ghost last
 echo "Starting Ghost..."
 cd "$GHOST_INSTALL_DIR"
-su node -c "bash -c 'source /home/node/.profile && NODE_ENV=production ghost run'"
+su node -c "bash -c 'source /home/node/.profile && NODE_ENV=production ghost run'" &
+pids+=($!)
 
-# Start FastAPI backend
-echo "Starting FastAPI backend..."
-cd /app
-. /app/venv/bin/activate
-python3 -m uvicorn src.services.api_server:app --host 0.0.0.0 --port 8000 --reload &
-
-# Start frontend
-echo "Starting frontend..."
-cd /app
-su node -c "bash -c 'source /home/node/.profile && npm run dev'" &
-
-# Wait for services to be ready
-wait_for_service 0.0.0.0 2368 "Ghost"
-wait_for_service 0.0.0.0 8000 "FastAPI"
+# Wait for all services to be ready
 wait_for_service 0.0.0.0 5173 "Frontend"
+wait_for_service 0.0.0.0 8000 "FastAPI"
+wait_for_service 0.0.0.0 2368 "Ghost"
 
 echo "All services are running!"
 
-# Keep container running and monitor logs
-tail -f /var/lib/ghost/content/logs/ghost.log
+# Keep the script running and handle process management
+while true; do
+    for pid in "${pids[@]}"; do
+        if ! kill -0 $pid 2>/dev/null; then
+            echo "Process $pid has died!"
+            cleanup
+        fi
+    done
+    sleep 1
+done
