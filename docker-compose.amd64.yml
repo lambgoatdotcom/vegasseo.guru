@@ -2,23 +2,26 @@ version: '3.8'
 
 services:
   frontend:
-    image: node:20-slim
-    platform: linux/arm64
-    working_dir: /app
-    command: sh -c "apt-get update && apt-get install -y netcat-openbsd && npm install && npm run dev"
+    image: obelisk/vegasguru-frontend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "5173:5173"
-    volumes:
-      - .:/app
     environment:
-      - NODE_ENV=development
-      - VITE_HOST=0.0.0.0
-      - VITE_PORT=5173
+      - NODE_ENV=production
+      - VITE_HOST=vegasseo.guru
+      - VITE_PORT=443
+      - VITE_PROTOCOL=https
+      - VITE_PUBLIC_URL=https://vegasseo.guru
       - VITE_GHOST_CONTENT_API_KEY=${VITE_GHOST_CONTENT_API_KEY}
       - VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
       - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY}
       - VITE_BRAVE_API_KEY=${VITE_BRAVE_API_KEY}
       - VITE_DEEPSEEK_API_KEY=${VITE_DEEPSEEK_API_KEY}
+    networks:
+      - app-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "5173"]
       interval: 30s
@@ -26,17 +29,19 @@ services:
       retries: 3
 
   backend:
-    image: python:3.9-slim
-    platform: linux/arm64
-    working_dir: /app
-    command: sh -c "apt-get update && apt-get install -y curl && pip install -r requirements.txt && python -m uvicorn src.services.api_server:app --host 0.0.0.0 --port 8000 --reload"
+    image: obelisk/vegasguru-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - CORS_ORIGIN=https://vegasseo.guru
+    networks:
+      - app-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -45,7 +50,7 @@ services:
 
   ghost:
     image: ghost:5-alpine
-    platform: linux/arm64
+    user: node
     ports:
       - "2368:2368"
     environment:
@@ -54,12 +59,23 @@ services:
       - database__connection__user=ghost
       - database__connection__password=ghostpass
       - database__connection__database=ghost
-      - url=http://localhost:2368
+      - url=https://vegasseo.guru
+      - NODE_ENV=production
+      - blog__title=Vegas SEO Guru
+      - blog__description=Expert SEO Services in Las Vegas
     volumes:
       - ghost-content:/var/lib/ghost/content
+    networks:
+      - app-network
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    command: >
+      sh -c "
+        sleep 10 &&
+        cd /var/lib/ghost &&
+        node current/index.js"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2368"]
       interval: 30s
@@ -68,7 +84,6 @@ services:
 
   db:
     image: mysql:8.0.32
-    platform: linux/arm64
     command: 
       - --default-authentication-plugin=mysql_native_password
       - --innodb-use-native-aio=0
@@ -79,6 +94,9 @@ services:
       MYSQL_PASSWORD: ghostpass
     volumes:
       - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
@@ -89,3 +107,7 @@ services:
 volumes:
   ghost-content:
   mysql-data:
+
+networks:
+  app-network:
+    driver: bridge 

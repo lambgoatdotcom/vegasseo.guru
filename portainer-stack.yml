@@ -1,61 +1,101 @@
 services:
-  app:
-    image: obelisk/vegasguru:latest
-    user: root
-    command: /app/start.sh
+  frontend:
+    image: obelisk/vegasguru-frontend:latest
     ports:
       - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_HOST=0.0.0.0
+      - VITE_PORT=5173
+      - VITE_GHOST_CONTENT_API_KEY=${VITE_GHOST_CONTENT_API_KEY}
+      - VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
+      - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY}
+      - VITE_BRAVE_API_KEY=${VITE_BRAVE_API_KEY}
+      - VITE_DEEPSEEK_API_KEY=${VITE_DEEPSEEK_API_KEY}
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    image: obelisk/vegasguru-backend:latest
+    ports:
       - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ghost:
+    image: obelisk/vegasguru-ghost:latest
+    ports:
       - "2368:2368"
     environment:
-      NODE_ENV: development
-      database__client: mysql
-      database__connection__host: db
-      database__connection__user: ghost
-      database__connection__password: ghostpass
-      database__connection__database: ghost
-      url: http://0.0.0.0:2368
-      VITE_GHOST_CONTENT_API_KEY: ${VITE_GHOST_CONTENT_API_KEY}
-      VITE_OPENAI_API_KEY: ${VITE_OPENAI_API_KEY}
-      VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
-      VITE_BRAVE_API_KEY: ${VITE_BRAVE_API_KEY}
-      VITE_DEEPSEEK_API_KEY: ${VITE_DEEPSEEK_API_KEY}
+      - database__client=mysql
+      - database__connection__host=db
+      - database__connection__user=ghost
+      - database__connection__password=ghostpass
+      - database__connection__database=ghost
+      - url=http://localhost:2368
+      - NODE_ENV=development
+      - database__connection__charset=utf8mb4
+      - DEBUG=ghost:*,ghost-config
+      - logging__level=info
+      - logging__rotation__enabled=true
+      - logging__path=/var/lib/ghost/content/logs/ghost.log
     volumes:
       - ghost-content:/var/lib/ghost/content
-      - .env:/app/.env
     networks:
       - app-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    command: sh -c "node current/index.js --verbose"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2368"]
-      interval: 1m30s
+      test: ["CMD", "nc", "-z", "localhost", "2368"]
+      interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
 
   db:
-    image: mysql:8.0
+    image: mysql:8.0.32
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --innodb-use-native-aio=0
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: ghost
       MYSQL_USER: ghost
       MYSQL_PASSWORD: ghostpass
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
 volumes:
   ghost-content:
-    external: true
-  mysql_data:
+  mysql-data:
 
 networks:
   app-network:
-    driver: overlay
+    driver: bridge

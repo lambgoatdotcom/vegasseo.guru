@@ -1,0 +1,19 @@
+FROM ghost:5-alpine
+
+# Install required packages
+RUN apk add --no-cache nodejs npm
+
+# Install Ghost CLI globally
+RUN npm install ghost-cli@latest -g
+
+# Create directory for Ghost
+WORKDIR /var/lib/ghost
+
+# Copy startup script
+COPY ghost-start.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/ghost-start.sh
+
+# Install MySQL client
+RUN apk add --no-cache mysql-client
+
+CMD ["/usr/local/bin/ghost-start.sh"] 
