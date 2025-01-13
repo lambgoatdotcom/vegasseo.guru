@@ -41,9 +41,6 @@ USER node
 ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
 ENV PATH="/home/node/.npm-global/bin:$PATH"
 
-# Install serve globally
-RUN npm install -g serve
-
 # Copy frontend build and dependencies
 COPY --from=frontend-builder --chown=node:node /app/dist /app/dist
 COPY --from=frontend-builder --chown=node:node /app/package*.json /app/
@@ -58,7 +55,7 @@ COPY --from=frontend-builder --chown=node:node /app/tailwind.config.js /app/
 WORKDIR /app
 RUN npm ci && \
     npm install -D tailwindcss postcss autoprefixer && \
-    npm install -g serve
+    npm install -g vite
 
 # Copy backend files
 COPY --from=backend-builder --chown=node:node /app/venv /app/venv
