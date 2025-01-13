@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   app:
-    image: obelisk/vegasguru:latest
-    platform: linux/arm64
+    image: obelisk/vegasguru:linux-amd64
+    platform: linux/amd64
     user: root
     command: /app/start.sh
     ports:
@@ -40,7 +40,7 @@ services:
 
   db:
     image: mysql:8.0.32
-    platform: linux/arm64
+    platform: linux/amd64
     command: 
       - --default-authentication-plugin=mysql_native_password
       - --innodb-use-native-aio=0

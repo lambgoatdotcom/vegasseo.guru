@@ -16,7 +16,7 @@ RUN . /app/venv/bin/activate && pip install --no-cache-dir -r requirements.txt
 # Final stage using Ghost as base
 FROM ghost:5
 
-# Install system dependencies
+# Install system dependencies and clean up in one layer
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -32,19 +32,19 @@ RUN apt-get update && apt-get install -y \
     python3-pydantic \
     python3-typing-extensions \
     && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --break-system-packages textblob
+    && pip3 install --no-cache-dir --break-system-packages textblob \
+    && mkdir -p /app /home/node/.npm-global \
+    && chown -R node:node /app /home/node
 
-# Set up directories
-RUN mkdir -p /app /home/node/.npm-global && \
-    chown -R node:node /app /home/node
-
-# Install serve globally
+# Set up npm global directory
 USER node
 ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
 ENV PATH="/home/node/.npm-global/bin:$PATH"
+
+# Install serve globally
 RUN npm install -g serve
 
-# Copy frontend build
+# Copy frontend build and dependencies
 COPY --from=frontend-builder --chown=node:node /app/dist /app/dist
 COPY --from=frontend-builder --chown=node:node /app/package*.json /app/
 COPY --from=frontend-builder --chown=node:node /app/src /app/src
@@ -55,9 +55,10 @@ COPY --from=frontend-builder --chown=node:node /app/postcss.config.js /app/
 COPY --from=frontend-builder --chown=node:node /app/tailwind.config.js /app/
 
 # Install frontend dependencies
-USER node
 WORKDIR /app
-RUN npm ci
+RUN npm ci && \
+    npm install -D tailwindcss postcss autoprefixer && \
+    npm install -g serve
 
 # Copy backend files
 COPY --from=backend-builder --chown=node:node /app/venv /app/venv
@@ -66,7 +67,6 @@ COPY --chown=node:node requirements.txt /app/
 
 # Copy startup script
 COPY --chown=node:node start.sh /app/start.sh
-WORKDIR /app
 RUN chmod +x start.sh
 
 ENV PYTHONPATH=/app
