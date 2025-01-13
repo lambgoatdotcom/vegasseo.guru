@@ -30,3 +30,17 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Ignore log files
+blog/content/logs/
+*.log
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore environment variables
+.env
+
+# Ignore DS_Store
+.DS_Store
