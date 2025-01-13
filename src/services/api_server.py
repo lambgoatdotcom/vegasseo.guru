@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import aiohttp
 from bs4 import BeautifulSoup
+from fastapi.middleware.cors import CORSMiddleware
 
 # Add the src directory to the Python path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -21,6 +22,15 @@ from .agents.content_analyzer import ContentAnalysisAgent, ContentAnalysisConfig
 load_dotenv()
 
 app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.getenv("CORS_ORIGIN", "https://vegasseo.guru")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Debug logging for environment variables
 print("Environment variables:")
@@ -531,6 +541,29 @@ Additional Notes
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    try:
+        if request.model == 'deepseek':
+            return StreamingResponse(
+                stream_deepseek_api(request.messages, request.use_search),
+                media_type="text/event-stream"
+            )
+        elif request.model == 'openai':
+            return StreamingResponse(
+                stream_openai_api(request.messages, request.use_search),
+                media_type="text/event-stream"
+            )
+        elif request.model == 'gemini':
+            return StreamingResponse(
+                stream_gemini_api(request.messages, request.use_search),
+                media_type="text/event-stream"
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
