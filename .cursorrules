@@ -1,0 +1,42 @@
+# Hey there! 👋 This is your Cursor Rules configuration file.
+# I've set it up to be helpful and friendly for your workflow.
+
+# File type hints - helps Cursor understand what kind of files you're working with
+general:
+  - "always build with docker and push to docker hub"
+  - "always push to github the latest changes"
+
+filetypes:
+  - "When I open .py files, treat them as Python"
+  - "For .js files, they're JavaScript"
+  - "Any .ts files are TypeScript"
+  - "The .jsx and .tsx files are React components"
+  - "HTML files end in .html"
+  - "Styles are in .css and .scss"
+  - "Config files use .json, .yml, or .yaml"
+  - "Documentation lives in .md files"
+
+# How you like your editor to behave
+editor_preferences:
+  "Let's use spaces instead of tabs": true
+  "Keep things clean by trimming extra whitespace": true
+  "Add a newline at the end of files": true
+  "Tab width": 2
+
+# Search settings to make your life easier
+search_preferences:
+  "Case sensitivity matters?": false
+  "Match whole words only?": false
+  "Use regex for complex searches?": false
+
+# Keeping your code pretty
+formatting:
+  "Format code automatically?": true
+  "Format when you save?": true
+
+# Code quality checks
+linting:
+  "Check code quality?": true
+  "Run checks on save?": true
+  "Be thorough but not too strict": true
+
