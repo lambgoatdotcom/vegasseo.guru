@@ -120,6 +120,9 @@ services:
     volumes:
       - ghost-content:/var/lib/ghost/content
       - /var/lib/ghost/current/content/themes/casper:/var/lib/ghost/content/themes/casper:ro
+    command: >
+      sh -c "mkdir -p /var/lib/ghost/content/themes /var/lib/ghost/content/logs &&
+             node current/index.js"
     networks:
       - app-network
     restart: unless-stopped
