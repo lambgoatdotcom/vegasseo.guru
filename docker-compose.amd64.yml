@@ -117,6 +117,14 @@ services:
       - mail__options__service=Mailgun
       - mail__options__auth__user=${MAILGUN_USER}
       - mail__options__auth__pass=${MAILGUN_PASS}
+      - active_theme=casper
+      - paths__contentPath=/var/lib/ghost/content
+      - paths__assets=/blog/assets
+      - paths__public=/blog/public
+      - privacy__useUpdateCheck=false
+      - privacy__useGravatar=false
+      - privacy__useRpcPing=false
+      - privacy__useStructuredData=true
     volumes:
       - ghost-content:/var/lib/ghost/content
       - /var/lib/ghost/current/content/themes/casper:/var/lib/ghost/content/themes/casper:ro

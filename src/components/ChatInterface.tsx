@@ -6,6 +6,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message } from '../types';
 import { ModelType, streamMessage, Source } from '../services/api';
 import TypingIndicator from './TypingIndicator';
+import logo from '../assets/images/seoguru-trans.png';
 
 interface ChatInterfaceProps {
   onClose: () => void;
@@ -686,7 +687,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
             <div className="flex items-end">
               {message.role === 'assistant' && (
                 <img 
-                  src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                  src={logo}
                   alt="SEO Guru" 
                   className="w-16 h-16 rounded-full mr-2"
                 />
@@ -816,7 +817,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
           <div className="flex justify-start">
             <div className="flex items-end">
               <img 
-                src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                src={logo}
                 alt="SEO Guru" 
                 className="w-16 h-16 rounded-full mr-2"
               />
@@ -939,7 +940,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
           <div className="flex justify-start">
             <div className="flex items-end">
               <img 
-                src="http://localhost:5173/src/assets/images/seoguru-trans.png" 
+                src={logo}
                 alt="SEO Guru" 
                 className="w-16 h-16 rounded-full mr-2"
               />
