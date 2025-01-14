@@ -1,4 +1,13 @@
 services:
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 15 --cleanup
+    restart: unless-stopped
+    networks:
+      - app-network
+
   nginx:
     image: obelisk/vegasguru-nginx:latest
     platform: linux/amd64
