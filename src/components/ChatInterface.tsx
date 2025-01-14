@@ -686,7 +686,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
             <div className="flex items-end">
               {message.role === 'assistant' && (
                 <img 
-                  src="/assets/images/frankie.png"
+                  src="/assets/img/seoguru-trans-CdxrRcg2.png"
                   alt="SEO Guru" 
                   className="w-16 h-16 rounded-full mr-2"
                 />
@@ -816,7 +816,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
           <div className="flex justify-start">
             <div className="flex items-end">
               <img 
-                src="/assets/images/frankie.png"
+                src="/assets/img/seoguru-trans-CdxrRcg2.png"
                 alt="SEO Guru" 
                 className="w-16 h-16 rounded-full mr-2"
               />
@@ -939,7 +939,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
           <div className="flex justify-start">
             <div className="flex items-end">
               <img 
-                src="/assets/images/frankie.png"
+                src="/assets/img/seoguru-trans-CdxrRcg2.png"
                 alt="SEO Guru" 
                 className="w-16 h-16 rounded-full mr-2"
               />
