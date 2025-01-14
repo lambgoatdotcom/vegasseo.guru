@@ -17,8 +17,8 @@ function Hero({ onChatOpen }: HeroProps) {
             SEO Expert
           </h1>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            Unlock the secrets of Las Vegas SEO with our AI expert. Get instant answers, 
-            content suggestions, and marketing strategies tailored for the Vegas market.
+            Need help with SEO in Vegas? I'll walk you through what actually works here - 
+            from local rankings to content that connects with our unique audience.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <button
