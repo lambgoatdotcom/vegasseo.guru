@@ -107,24 +107,25 @@ services:
       - NODE_ENV=production
       - blog__title=Vegas SEO Guru
       - blog__description=Expert SEO Services in Las Vegas
-      - admin__url=https://vegasseo.guru/blog/ghostI currently have vegasseo.guru running through cloudflare tunnels to localhost:5173, but I'm unsure how to handle the blog etc, now that we've set up nginx how should we really handle all this
+      - admin__url=https://vegasseo.guru/blog/ghost
       - admin__redirects=true
       - admin__session__cookie__secure=true
       - admin__session__cookie__httpOnly=true
       - admin__session__cookie__sameSite=strict
+      - mail__from=noreply@vegasseo.guru
+      - mail__transport=SMTP
+      - mail__options__service=Mailgun
+      - mail__options__auth__user=${MAILGUN_USER}
+      - mail__options__auth__pass=${MAILGUN_PASS}
     volumes:
       - ghost-content:/var/lib/ghost/content
+      - /var/lib/ghost/current/content/themes/casper:/var/lib/ghost/content/themes/casper:ro
     networks:
       - app-network
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "
-        sleep 10 &&
-        cd /var/lib/ghost &&
-        node current/index.js"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2368"]
       interval: 30s
