@@ -33,7 +33,7 @@ function ChatInterface({ onClose, onAskStart, isExpanded }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hey there! I'm Frankie, your Las Vegas SEO expert. It's ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} and I'm here to help your business stand out in the vibrant Las Vegas market! Whether you're looking to improve your search rankings or attract more visitors to your site, I've got expert strategies to help you succeed. What would you like to know about marketing in Las Vegas?`
+      content: `I'm Frankie, your Las Vegas SEO expert. It's ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} and I'm here to help your business stand out in the vibrant Las Vegas market! Whether you're looking to improve your search rankings or attract more visitors to your site, I've got expert strategies to help you succeed. What would you like to know about marketing in Las Vegas?`
     }
   ]);
   const [input, setInput] = useState('');

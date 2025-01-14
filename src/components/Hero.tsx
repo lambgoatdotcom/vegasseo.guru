@@ -11,10 +11,10 @@ function Hero({ onChatOpen }: HeroProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            Your AI-Powered
-            <span className="text-purple-600"> SEO Guru</span>
+            I'm Frankie, Your
+            <span className="text-purple-600">  Las Vegas </span>
             <br />
-            for Las Vegas
+            SEO Expert
           </h1>
           <p className="mt-6 text-lg leading-8 text-gray-600">
             Unlock the secrets of Las Vegas SEO with our AI expert. Get instant answers, 
