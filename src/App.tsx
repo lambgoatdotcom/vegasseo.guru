@@ -51,7 +51,7 @@ function App() {
                     <div className={`text-left lg:pr-8 transition-all duration-500 ease-in-out ${isAsking ? 'opacity-0 lg:translate-x-[-100%]' : 'opacity-100 lg:translate-x-0'}`}>
                       <div className="flex flex-col items-center lg:items-start">
                         <img 
-                          src="/src/assets/images/frankie.png" 
+                          src="/assets/img/frankie.png" 
                           alt="Las Vegas SEO Guru" 
                           className="w-80 h-80 mb-8 rounded-2xl shadow-lg aspect-square object-cover"
                         />
