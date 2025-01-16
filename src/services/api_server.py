@@ -26,7 +26,7 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ORIGIN", "https://vegasseo.guru")],
+    allow_origins=["*"],  # Allow all origins in development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +68,9 @@ class ChatResponse(BaseModel):
     response: str
     sources: Optional[List[Source]] = None
     search_performed: bool = False
+
+class SimpleMessage(BaseModel):
+    message: str
 
 async def scrape_page_content(url: str) -> str:
     try:
@@ -423,21 +426,19 @@ async def stream_gemini_api(messages: List[Message], use_search: bool = False) -
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
+async def simple_chat(request: SimpleMessage):
     try:
-        model_handlers = {
-            'deepseek': stream_deepseek_api,
-            'openai': stream_openai_api,
-            'gemini': stream_gemini_api
-        }
+        # Convert the simple message to our internal format
+        messages = [Message(role="user", content=request.message)]
         
-        handler = model_handlers.get(request.model)
-        if not handler:
-            raise HTTPException(status_code=400, detail=f'Unsupported model: {request.model}')
+        # Use Gemini as the default model
+        async for chunk in stream_gemini_api(messages):
+            if chunk.get('content'):
+                return {"response": chunk['content']}
         
-        return await stream_response(handler(request.messages, request.use_search))
-    
+        return {"response": "I apologize, but I couldn't generate a response. Please try again."}
     except Exception as e:
+        print(f"Error in simple_chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/seo/audit")

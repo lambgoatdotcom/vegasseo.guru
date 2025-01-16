@@ -15,13 +15,15 @@ export interface StreamChunk {
   error?: string;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://backend:8000/api';
+
 export async function* streamMessage(
   messages: Message[], 
   model: ModelType = 'deepseek',
   useSearch: boolean = false
 ): AsyncGenerator<StreamChunk> {
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +36,9 @@ export async function* streamMessage(
     });
 
     if (!response.ok) {
-      throw new Error('API request failed');
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
+      throw new Error(`API request failed: ${response.status} ${errorText}`);
     }
 
     const reader = response.body?.getReader();
@@ -62,6 +66,7 @@ export async function* streamMessage(
             yield chunk;
           } catch (e) {
             console.error('Error parsing chunk:', e);
+            console.error('Raw data:', data);
           }
         }
       }
